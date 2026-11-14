@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atomic — Chat Introspection Sanctuary Key Mockup</title>
+  <style>
+    /*
+      Governing Spine Sections:
+      - DESIGN.md § 1 (Brand & Style), § 2 (Accents: accent-mirror, accent-future), § 7.10 (Chat Mode Frames), § 8 (Do's and Don'ts)
+      - EXPERIENCE.md § 2 (IA: Chat), § 4.9 (Chat Dual-Mode Sanctuary), § 10 (Flow 6, Flow 7)
+      Spines win on conflict with this visual mockup.
+    */
+    :root {
+      --bg-page: #FAF8F5;
+      --bg-card: #FFFFFF;
+      --bg-raised: #F3EFE8;
+      --border: #E8E4DD;
+      --text-primary: #1F2937;
+      --text-secondary: #6B7280;
+      --text-muted: #7A8190;
+      --accent-mirror: #4A6A8A;
+      --accent-future: #E0A94F;
+      --insight-bg: #EFE9FB;
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-voice: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #E2DDD5;
+      font-family: var(--font-ui);
+      color: var(--text-primary);
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      padding: 30px 16px;
+      min-height: 100vh;
+      flex-wrap: wrap;
+    }
+    .device-frame {
+      width: 100%;
+      max-width: 390px;
+      background: var(--bg-page);
+      border-radius: 40px;
+      border: 8px solid #2B2A27;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 844px;
+      position: relative;
+    }
+    .status-bar {
+      height: 44px;
+      padding: 12px 24px 0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .header-bar {
+      padding: 12px 20px;
+      border-bottom: 2px solid transparent;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-card);
+    }
+    .frame-mirror .header-bar {
+      border-bottom-color: var(--accent-mirror);
+    }
+    .frame-future .header-bar {
+      border-bottom-color: var(--accent-future);
+    }
+    .mode-label {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .frame-mirror .mode-label { color: var(--accent-mirror); }
+    .frame-future .mode-label { color: var(--accent-future); }
+    .mode-tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      background: var(--bg-raised);
+      color: var(--text-secondary);
+    }
+    .messages-area {
+      flex: 1;
+      padding: 18px 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    /* Bubbles */
+    .bubble {
+      max-width: 86%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .bubble.user {
+      align-self: flex-end;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+    }
+    .bubble.assistant-mirror {
+      align-self: flex-start;
+      background: var(--bg-raised);
+      border-left: 3px solid var(--accent-mirror);
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+    }
+    .bubble.assistant-future {
+      align-self: flex-start;
+      background: var(--insight-bg);
+      border-left: 3px solid var(--accent-future);
+      color: var(--text-primary);
+      font-family: var(--font-voice);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    .bubble-action {
+      margin-top: 10px;
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    /* Privacy Chip & Input Dock */
+    .input-dock {
+      padding: 12px 16px 80px;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+    }
+    .privacy-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 9999px;
+      margin-bottom: 8px;
+      width: 100%;
+      justify-content: center;
+    }
+    .input-box {
+      width: 100%;
+      height: 42px;
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 12px;
+      font-size: 14px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .input-placeholder {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .btn-send {
+      width: 28px;
+      height: 28px;
+      border-radius: 9999px;
+      background: var(--text-primary);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+    /* Bottom Nav Bar */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding-bottom: 8px;
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .nav-item.active {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+    .nav-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 9999px;
+      background: var(--accent-future);
+      margin-top: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Mirror Mode Mockup -->
+  <div class="device-frame frame-mirror">
+    <div class="status-bar">
+      <span>9:30</span>
+      <span>Mirror</span>
+    </div>
+    <div class="header-bar">
+      <span class="mode-label">The Objective Mirror</span>
+      <span class="mode-tag">Aggregated Stats</span>
+    </div>
+    <div class="messages-area">
+      <div class="bubble user">
+        How consistent have I actually been with deep work this month?
+      </div>
+      <div class="bubble assistant-mirror">
+        Over 30 days, Deep Work has an 82% consistency rate (18 check-ins). Your check-ins cluster between 08:00 and 10:00. After missed days, your average recovery time is 2.3 days. What is happening on that second day?
+        <div><span class="bubble-action">Write in Journal →</span></div>
+      </div>
+    </div>
+    <div class="input-dock">
+      <div class="privacy-chip">
+        🔒 Aggregated stats only (0 raw journal entries shared)
+      </div>
+      <div class="input-box">
+        <span class="input-placeholder">Ask about your patterns...</span>
+        <div class="btn-send">↑</div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item"><span>Today</span></div>
+      <div class="nav-item"><span>Journal</span></div>
+      <div class="nav-item"><span>Insights</span></div>
+      <div class="nav-item active">
+        <span>Chat</span>
+        <div class="nav-dot"></div>
+      </div>
+      <div class="nav-item"><span>Me</span></div>
+    </div>
+  </div>
+
+  <!-- Future-Self Mode Mockup -->
+  <div class="device-frame frame-future">
+    <div class="status-bar">
+      <span>9:30</span>
+      <span>Future Self</span>
+    </div>
+    <div class="header-bar">
+      <span class="mode-label">Dialogue with Your Future Self</span>
+      <span class="mode-tag">Alter Ego: Craft</span>
+    </div>
+    <div class="messages-area">
+      <div class="bubble user">
+        I’m sitting at my desk feeling totally blocked and want to scroll Twitter.
+      </div>
+      <div class="bubble assistant-future">
+        Remember that perfection is just fear in a suit. What is the worst, most messy sentence you could put on paper right now? Write just that one to break the dam.
+        <div><span class="bubble-action">Take this into today →</span></div>
+      </div>
+    </div>
+    <div class="input-dock">
+      <div class="privacy-chip">
+        🔒 Grounded in your defined Alter Ego principles
+      </div>
+      <div class="input-box">
+        <span class="input-placeholder">Consult your future self...</span>
+        <div class="btn-send">↑</div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item"><span>Today</span></div>
+      <div class="nav-item"><span>Journal</span></div>
+      <div class="nav-item"><span>Insights</span></div>
+      <div class="nav-item active">
+        <span>Chat</span>
+        <div class="nav-dot"></div>
+      </div>
+      <div class="nav-item"><span>Me</span></div>
+    </div>
+  </div>
+
+</body>
+</html>

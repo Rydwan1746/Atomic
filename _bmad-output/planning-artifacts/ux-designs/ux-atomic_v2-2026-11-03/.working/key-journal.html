@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atomic — Ruled Journal Ledger Key Mockup</title>
+  <style>
+    /*
+      Governing Spine Sections:
+      - DESIGN.md § 1 (Brand & Style), § 2 (Colors: Paper & Ruled lines), § 3 (Typography: Serif), § 7.2 (Journal Ledger)
+      - EXPERIENCE.md § 2 (IA: Journal), § 4.4 (Ruled Journal Ledger), § 5 (Empty Journal State)
+      Spines win on conflict with this visual mockup.
+    */
+    :root {
+      --bg-page: #FAF8F5;
+      --bg-card: #FFFFFF;
+      --bg-raised: #F3EFE8;
+      --border: #E8E4DD;
+      --text-primary: #1F2937;
+      --text-secondary: #6B7280;
+      --text-muted: #7A8190;
+      --accent-future: #E0A94F;
+      --ruled-line-paper: rgba(232, 228, 221, 0.70);
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-voice: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+      --ledger-line-height: 28px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #E2DDD5;
+      font-family: var(--font-ui);
+      color: var(--text-primary);
+      display: flex;
+      justify-content: center;
+      padding: 30px 16px;
+      min-height: 100vh;
+    }
+    .device-frame {
+      width: 100%;
+      max-width: 390px;
+      background: var(--bg-page);
+      border-radius: 40px;
+      border: 8px solid #2B2A27;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 844px;
+      position: relative;
+    }
+    .status-bar {
+      height: 44px;
+      padding: 12px 24px 0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .content {
+      flex: 1;
+      padding: 16px 20px 88px;
+      overflow-y: auto;
+    }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 16px;
+    }
+    .journal-title {
+      font-family: var(--font-voice);
+      font-size: 26px;
+      font-weight: 400;
+    }
+    .journal-date {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    /* Prompt Card */
+    .prompt-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .prompt-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent-future);
+      margin-bottom: 6px;
+    }
+    .prompt-text {
+      font-family: var(--font-voice);
+      font-size: 18px;
+      line-height: 1.35;
+      color: var(--text-primary);
+    }
+    /* Ruled Ledger Area */
+    .ledger-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      position: relative;
+    }
+    .ledger-ruled {
+      font-family: var(--font-voice);
+      font-size: 17px;
+      line-height: var(--ledger-line-height);
+      color: var(--text-primary);
+      background-image: linear-gradient(to bottom, transparent calc(var(--ledger-line-height) - 1px), var(--ruled-line-paper) 1px);
+      background-size: 100% var(--ledger-line-height);
+      min-height: 196px;
+      padding: 0 2px;
+      outline: none;
+    }
+    .tag-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 14px;
+      align-items: center;
+    }
+    .tag-chip {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .tag-chip.active {
+      background: #EFE9FB;
+      color: #4B3685;
+      border-color: #D1C4E9;
+      font-weight: 600;
+    }
+    .btn-save {
+      width: 100%;
+      padding: 12px;
+      background: var(--text-primary);
+      color: #FFFFFF;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      margin-top: 14px;
+      text-align: center;
+    }
+    /* Past Entry Snippet */
+    .past-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .past-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .past-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .past-body {
+      font-family: var(--font-voice);
+      font-size: 15px;
+      line-height: var(--ledger-line-height);
+      background-image: linear-gradient(to bottom, transparent calc(var(--ledger-line-height) - 1px), var(--ruled-line-paper) 1px);
+      background-size: 100% var(--ledger-line-height);
+      color: var(--text-primary);
+    }
+    /* Bottom Nav Bar */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding-bottom: 8px;
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .nav-item.active {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+    .nav-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 9999px;
+      background: var(--accent-future);
+      margin-top: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="device-frame">
+    <div class="status-bar">
+      <span>9:30</span>
+      <span>100%</span>
+    </div>
+    <div class="content">
+      <div class="header-row">
+        <h1 class="journal-title">Ledger</h1>
+        <span class="journal-date">Fri, Nov 3</span>
+      </div>
+
+      <!-- Prompt Card -->
+      <div class="prompt-card">
+        <div class="prompt-label">Daily Prompt</div>
+        <div class="prompt-text">What is one small truth you noticed about your energy today?</div>
+      </div>
+
+      <!-- Ruled Ledger Container -->
+      <div class="ledger-container">
+        <div class="ledger-ruled">
+          I almost skipped reading tonight because I was exhausted after work. But the two-minute rule reminded me that reading even one sentence is a vote for who I want to be. Once I opened the book, I happily finished twelve pages.
+        </div>
+        <div class="tag-row">
+          <span class="tag-chip active">Focused</span>
+          <span class="tag-chip">Low Energy</span>
+          <span class="tag-chip active">Proud</span>
+        </div>
+        <button class="btn-save">Preserve in Ledger →</button>
+      </div>
+
+      <!-- Past Entry Card -->
+      <div class="past-section-title">Yesterday's Note</div>
+      <div class="past-card">
+        <div class="past-meta">
+          <span>Thu, Nov 2</span>
+          <span>Mood: 3/5</span>
+        </div>
+        <div class="past-body">
+          Missed meditation this morning due to early commute. Reframed it as data: tomorrow morning, leave phone on desk.
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+      <div class="nav-item">
+        <span>Today</span>
+      </div>
+      <div class="nav-item active">
+        <span>Journal</span>
+        <div class="nav-dot"></div>
+      </div>
+      <div class="nav-item">
+        <span>Insights</span>
+      </div>
+      <div class="nav-item">
+        <span>Chat</span>
+      </div>
+      <div class="nav-item">
+        <span>Me</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

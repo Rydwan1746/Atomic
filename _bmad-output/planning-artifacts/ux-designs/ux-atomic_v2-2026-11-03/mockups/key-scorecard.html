@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atomic — Habits Scorecard Key Mockup</title>
+  <style>
+    /*
+      Governing Spine Sections:
+      - DESIGN.md § 1 (Brand & Style), § 2 (Colors), § 7.6 (Today Switcher), § 7.7 (Scorecard Rows), § 8 (Do's and Don'ts)
+      - EXPERIENCE.md § 2 (IA: Today), § 4.6 (Scorecard Row Interaction), § 10 (Flow 4)
+      Spines win on conflict with this visual mockup.
+    */
+    :root {
+      --bg-page: #FAF8F5;
+      --bg-card: #FFFFFF;
+      --bg-raised: #F3EFE8;
+      --border: #E8E4DD;
+      --text-primary: #1F2937;
+      --text-secondary: #6B7280;
+      --text-muted: #7A8190;
+      --accent-future: #E0A94F;
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-voice: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #E2DDD5;
+      font-family: var(--font-ui);
+      color: var(--text-primary);
+      display: flex;
+      justify-content: center;
+      padding: 30px 16px;
+      min-height: 100vh;
+    }
+    .device-frame {
+      width: 100%;
+      max-width: 390px;
+      background: var(--bg-page);
+      border-radius: 40px;
+      border: 8px solid #2B2A27;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 844px;
+      position: relative;
+    }
+    .status-bar {
+      height: 44px;
+      padding: 12px 24px 0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .content {
+      flex: 1;
+      padding: 16px 20px 88px;
+      overflow-y: auto;
+    }
+    .greeting {
+      font-family: var(--font-voice);
+      font-size: 24px;
+      line-height: 1.25;
+      margin-bottom: 6px;
+      font-weight: 400;
+    }
+    .scorecard-sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 18px;
+    }
+    /* Switcher */
+    .switcher {
+      display: flex;
+      background: var(--bg-raised);
+      padding: 4px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+    }
+    .switcher-tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .switcher-tab.active {
+      background: #FFFFFF;
+      color: var(--text-primary);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      border-bottom: 2px solid var(--accent-future);
+    }
+    .switcher-tab.inactive {
+      color: var(--text-muted);
+    }
+    /* Scorecard List */
+    .scorecard-banner {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text-secondary);
+    }
+    .scorecard-banner strong {
+      color: var(--text-primary);
+    }
+    .scorecard-row {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 52px;
+    }
+    .row-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .routine-title {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .rating-badges {
+      display: flex;
+      gap: 6px;
+    }
+    .rating-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .rating-btn.active-pos {
+      background: var(--bg-raised);
+      color: var(--text-primary);
+      border-color: var(--text-secondary);
+    }
+    .rating-btn.active-neu {
+      background: var(--bg-raised);
+      color: var(--text-primary);
+      border-color: var(--text-secondary);
+    }
+    .rating-btn.active-neg {
+      background: #2A3243;
+      color: #E9E6DF;
+      border-color: #2A3243;
+    }
+    /* Ghost actions & microcopy */
+    .micro-note {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    .ghost-link {
+      font-size: 12px;
+      color: var(--text-primary);
+      text-decoration: underline;
+      cursor: pointer;
+      align-self: flex-start;
+      margin-top: 2px;
+    }
+    /* Bottom Nav Bar */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding-bottom: 8px;
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .nav-item.active {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+    .nav-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 9999px;
+      background: var(--accent-future);
+      margin-top: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="device-frame">
+    <div class="status-bar">
+      <span>9:30</span>
+      <span>100%</span>
+    </div>
+    <div class="content">
+      <h1 class="greeting">Today is a vote for who you’re becoming.</h1>
+      <p class="scorecard-sub">Habits Scorecard · Bring autopilot into the light</p>
+
+      <!-- Today Switcher -->
+      <div class="switcher">
+        <div class="switcher-tab inactive">Daily Votes</div>
+        <div class="switcher-tab active">Habits Scorecard</div>
+      </div>
+
+      <div class="scorecard-banner">
+        <strong>Your Scorecard is a compass.</strong> Rate each routine by whether it strengthens who you want to become. Zero red warnings; awareness precedes change.
+      </div>
+
+      <!-- Row 1: Negative routine -->
+      <div class="scorecard-row">
+        <div class="row-main">
+          <span class="routine-title">Checked phone on waking</span>
+          <div class="rating-badges">
+            <div class="rating-btn">+</div>
+            <div class="rating-btn">=</div>
+            <div class="rating-btn active-neg">−</div>
+          </div>
+        </div>
+        <div class="micro-note">Noticed, not judged.</div>
+      </div>
+
+      <!-- Row 2: Neutral routine / anchor -->
+      <div class="scorecard-row">
+        <div class="row-main">
+          <span class="routine-title">Morning coffee</span>
+          <div class="rating-badges">
+            <div class="rating-btn">+</div>
+            <div class="rating-btn active-neu">=</div>
+            <div class="rating-btn">−</div>
+          </div>
+        </div>
+        <span class="ghost-link">Use as stacking anchor →</span>
+      </div>
+
+      <!-- Row 3: Positive routine / promote -->
+      <div class="scorecard-row">
+        <div class="row-main">
+          <span class="routine-title">Morning workout</span>
+          <div class="rating-badges">
+            <div class="rating-btn active-pos">+</div>
+            <div class="rating-btn">=</div>
+            <div class="rating-btn">−</div>
+          </div>
+        </div>
+        <span class="ghost-link">Promote to identity habit →</span>
+      </div>
+
+      <!-- Row 4: Negative routine -->
+      <div class="scorecard-row">
+        <div class="row-main">
+          <span class="routine-title">Afternoon sweet snack</span>
+          <div class="rating-badges">
+            <div class="rating-btn">+</div>
+            <div class="rating-btn">=</div>
+            <div class="rating-btn active-neg">−</div>
+          </div>
+        </div>
+        <div class="micro-note">Noticed, not judged.</div>
+      </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+      <div class="nav-item active">
+        <span>Today</span>
+        <div class="nav-dot"></div>
+      </div>
+      <div class="nav-item">
+        <span>Journal</span>
+      </div>
+      <div class="nav-item">
+        <span>Insights</span>
+      </div>
+      <div class="nav-item">
+        <span>Chat</span>
+      </div>
+      <div class="nav-item">
+        <span>Me</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
