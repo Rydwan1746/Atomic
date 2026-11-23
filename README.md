@@ -94,7 +94,7 @@ Every message goes through `js/ai/index.js`, in this order:
 4. **System prompt** (`js/ai/prompts.js`): describes the mode's voice and lane, a 120-word limit, at most one suggestion, a crisis rule, and how to hand off with a `[REDIRECT:mirror|future]` tag. The data is written as plain sentences rather than JSON, so small local models read the numbers correctly.
 5. **Reply cleaning** (`js/ai/guardrails.js`): turns a hand-off tag into the switch button while keeping the rest of the answer, ignores a hand-off away from a question that is clearly in scope, removes the stock "That's a question for…" line small models tend to copy into every reply, strips markdown and "Observation:" labels, trims to 120 words, and removes any sentence with numbers from Future Self replies.
 
-Small local models follow these instructions less reliably than large ones. `llama3.2` (3B) works; an 7B to 8B model such as `qwen2.5:7b` or `llama3.1:8b` gives noticeably more natural replies if your computer can run it.
+Small local models follow these instructions less reliably than large ones. `llama3.2` (3B) works; a 7B or 8B model such as `qwen2.5:7b` or `llama3.1:8b` gives noticeably more natural replies if your computer can run it.
 
 The privacy chip above the chat shows exactly what the next message will send. **Me > AI reflection > What was sent** keeps a local log of the last 30 requests and their payloads.
 
