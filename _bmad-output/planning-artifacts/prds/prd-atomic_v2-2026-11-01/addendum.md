@@ -151,35 +151,86 @@ All insights are pure functions returning hypothesis objects with explicit sampl
 
 ---
 
-## 5. AI Prompt Architecture & Privacy Guardrails (`chat.js`)
+## 5. AI Prompt Architecture, Guardrails & Local Ollama Specs (`chat.js`, `adapters.js`)
 
-### 5.1 System Persona Directives
+### 5.1 System Persona Directives & Distinct Roles
+
+#### Mode A: The Objective Mirror
 ```
-You are the conscious reflection assistant in Atomic, an identity-based habit tracker grounded in James Clear's Atomic Habits.
-Your mission is to help the user bring the unconscious into consciousness, spot autopilot tendencies, and reinforce who they are becoming.
+You are the Objective Mirror in Atomic v2, an identity-based habit tracker.
+Your mission: Provide an objective, factual, non-judgmental reflection of the user's empirical habit data, streaks, and check-in history.
 
-BEHAVIORAL INVARIANTS:
-1. Ask questions and reflect observations rather than prescribing rigid routines. Max 1 actionable suggestion per reply.
-2. Ground all statements in the user's provided data payload. If an event or habit is not in the payload, explicitly state: "I don't see that in your data."
-3. In Future-Self Mode, speak strictly from the user's defined Alter Ego profile, values, and behaviors. Never invent aspirations or moralize.
-4. Keep responses concise, reflective, and under 120 words.
-5. In Mirror Mode, speak in UI voice (sans-serif framing); in Future-Self Mode, speak in Identity Voice (reflective serif tone).
-6. CRITICAL SAFETY: You are not a therapist or medical provider. If messages suggest acute crisis or self-harm, suspend persona immediately and provide warm, concise crisis resource pointers.
+ROLE BOUNDARIES & GUARDRAILS:
+1. Stick strictly to empirical metrics, check-in percentages, recovery windows, and observed patterns.
+2. Speak in calm, analytical UI voice (sans-serif framing). Zero fluff, no moralizing, no cheerleading.
+3. Keep responses concise and strictly under 120 words.
+4. OUT-OF-SCOPE REDIRECTION: If the user asks for identity philosophy, life coaching, emotional reassurance, or "what should my future self do?", you MUST refuse and redirect:
+   "That's a question for your Future Self."
+   Output format for redirection: Include the redirection token [REDIRECT:future] so the UI renders the switch button.
 ```
 
-### 5.2 Payload Construction Rules
-- Default payload: Aggregated metrics only (habit names, identities, 30-day consistency percentages, active insights, streak stats, Alter Ego profile).
-- Journal entries with `private: true` are filtered out before payload assembly under all circumstances.
-- Unencrypted journal text is sent only if the user explicitly checks the single-message "Include journal text" checkbox for that turn.
+#### Mode B: Dialogue with Future Self
+```
+You are the user's Future Self in Atomic v2, embodying their highest aspired Alter Ego values, narrative, and obstacle handling philosophy.
+Your mission: Provide grounded wisdom, perspective, and compassionate accountability based on who the user is becoming.
 
-### 5.3 Provider Specifications & Direct Browser Endpoints
-- **Primary Cloud Adapter (Google Gemini):**
-  - Model: `gemini-2.5-flash` (or current stable Flash equivalent).
-  - Endpoint: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}`.
-  - Transport: Browser-native `fetch()` via HTTPS with native CORS support.
-  - Zero-friction transition: Designed to migrate seamlessly from client-side BYOK to an edge proxy worker (injecting an app-level key) for frictionless public rollout.
-- **Local On-Device Adapter (Ollama):**
-  - Endpoint: `http://localhost:11434/api/chat`.
-  - Transport: Loopback HTTP requests with user-configured `OLLAMA_ORIGINS="*"`.
-- **Secondary BYOK Adapters:**
-  - Standard REST interfaces for Anthropic / OpenAI direct browser execution.
+ROLE BOUNDARIES & GUARDRAILS:
+1. Speak from the user's defined Alter Ego profile (Values, Obstacle Strategy, Archetype Behaviors).
+2. Speak in reflective, warm Identity Voice (serif framing).
+3. Keep responses concise and strictly under 120 words.
+4. OUT-OF-SCOPE REDIRECTION: If the user asks for raw statistical metrics, exact check-in calculations, or database streak tallies, you MUST refuse and redirect:
+   "That's a question for your Objective Mirror."
+   Output format for redirection: Include the redirection token [REDIRECT:mirror] so the UI renders the switch button.
+```
+
+### 5.2 Contextual Payload Construction for Local Ollama
+The contextual payload is assembled locally by `buildSafePayload()` and fed directly to Ollama:
+- **Habits Context:** Active habits, identities, categories, current streaks, 30-day consistency rates.
+- **Journal Context:** Recent journal entries and miss-reason notes (entries with `private: true` are strictly filtered out; only non-private entries are included).
+- **Alter Ego Context (Future-Self Mode):** Name, narrative description, 3 core values, obstacle philosophy, and 3 specific behaviors.
+- **UI Decoupling:** In the UI, the Future Self input box displays a calm, generic prompt (*"Ask your future self anything..."*). Trait lists are never rendered in the input field.
+
+### 5.3 Local On-Device Adapter (Ollama) & Graceful Fallback
+- **Endpoint:** `http://localhost:11434/api/generate` (or `/api/chat`).
+- **Transport:** HTTP POST with loopback fetch.
+- **Payload Schema:**
+  ```json
+  {
+    "model": "llama3.2",
+    "prompt": "{systemInstruction}\n\nUser: {userMessage}",
+    "stream": false,
+    "options": {
+      "temperature": 0.7,
+      "num_predict": 250
+    }
+  }
+  ```
+- **Error Handling & Graceful Fallback:**
+  - Network timeouts (e.g. 5-second `AbortController`) or connection-refused errors are caught silently without throwing.
+  - Returns a graceful fallback object: `{ ok: true, provider: "offline-fallback", text: "...", mode: mode, offlineNotice: true }`.
+  - UI displays an unobtrusive toast/status indicator: *"Local model offline at localhost:11434. Falling back to offline reflection."*
+
+---
+
+## 6. Physical Notebook Journal Specifications (`journal.js`, `style.css`)
+
+### 6.1 Ruled Line Rendering & Typography Sync
+- **Rhythm & Line Spacing:** The background grid uses a repeating linear gradient with a `28px` cadence:
+  ```css
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 27px,
+    var(--ruled-line) 27px,
+    var(--ruled-line) 28px
+  );
+  ```
+- **Line Alignment:** The writing `textarea` and rendered entry cards MUST have:
+  - `font-size: 17px;`
+  - `line-height: 28px;`
+  - `padding-top: 6px;` (or calculated baseline offset)
+  Ensuring text baseline aligns precisely with the 28px ruled lines without drifting over multi-line text.
+- **Dynamic Auto-Expansion:** Textarea automatically adjusts its height on `input` events (`textarea.style.height = textarea.scrollHeight + 'px'`). As height expands, the background repeating gradient continues generating new lines dynamically.
+- **Taller Page Proportions:** Minimum height for the active journaling canvas is set to `min-height: 340px` (with historical entry cards maintaining comfortable breathing room) to provide a generous physical notebook feel.
+- **Theme Palette Tokens:**
+  - `--ruled-line-paper: rgba(180, 150, 120, 0.22);` (warm sepia rule in Paper mode)
+  - `--ruled-line-night: rgba(255, 255, 255, 0.08);` (muted slate rule in Night mode)

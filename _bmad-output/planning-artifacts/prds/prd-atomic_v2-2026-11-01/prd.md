@@ -2,7 +2,7 @@
 title: "Atomic v2 — Product Requirements Document"
 status: final
 created: 2026-11-01
-updated: 2026-11-02
+updated: 2026-11-20
 ---
 
 # PRD: Atomic v2 — Identity-Based Habit Tracker
@@ -60,18 +60,20 @@ Through its local-first architecture and dual-mode AI reflection, Atomic gives t
 - **Climax:** David recognizes that Thursday late-night team syncs drain his energy, prompting him to move workout times to Friday mornings.
 - **Resolution:** A journal reflection is saved, and David adjusts the habit intention from Thursday evening to Friday morning.
 
-#### UJ-4: Mirror Mode Interaction (Current Self)
+#### UJ-4: Mirror Mode Interaction (Objective Mirror)
 - **Persona & Context:** Elena feels busy all week but feels ungrounded and unsure if her routines are actually helping.
-- **Entry State:** Elena navigates to the **Chat** tab and selects **Mirror Mode**.
-- **Path:** Elena types: *"How consistent have I actually been this month with deep work?"* The persistent privacy chip confirms: *"Summary sent to Ollama (Aggregated stats only)"*.
-- **Climax:** The LLM responds in concise, non-judgmental UI voice: *"Over the last 30 days, Deep Work has an 82% consistency rate (18 check-ins). Your check-ins cluster in the morning between 08:00 and 10:00. However, after missed days, your average recovery time is 2.3 days. What is happening on that second day?"*
-- **Resolution:** Elena reflects on the prompt and sets an intention in her Journal.
+- **Entry State:** Elena navigates to the **Chat** tab and selects **The Objective Mirror**.
+- **Path:** Elena types: *"How consistent have I actually been this month with deep work?"* The persistent privacy chip confirms: *"Context: Habit metrics + Non-private Journal reflections (Local Ollama)"*.
+- **Climax:** The local Ollama model responds in concise, objective, non-judgmental UI voice: *"Over the last 30 days, Deep Work has an 82% consistency rate (18 check-ins). Your check-ins cluster in the morning between 08:00 and 10:00. However, after missed days, your average recovery time is 2.3 days. Your journal on the 12th noted fatigue after late calls. What is happening on that second day?"*
+- **Guardrail & Redirection:** When Elena asks an out-of-scope identity/aspirational question (*"Who should I become next year?"*), the Objective Mirror recognizes the boundary breach and responds: *"That's a question for your Future Self,"* presenting an interactive button `Switch to Future Self →` that seamlessly navigates Elena to the Dialogue with Future Self tab.
+- **Resolution:** Elena reflects on the prompt and sets an intention in her lined Journal. If Ollama is offline, she receives an informative fallback message with static template insights while keeping full app functionality.
 
-#### UJ-5: Alter Ego Dialogue (Ideal Future Self)
+#### UJ-5: Alter Ego Dialogue (Dialogue with Future Self)
 - **Persona & Context:** Alex faces high friction starting a challenging creative writing project.
-- **Entry State:** Alex opens **Chat**, toggles to **Future-Self Mode**, and clicks *"Ask my future self about a situation"*.
-- **Path:** Alex enters: *"I'm sitting at my desk feeling totally blocked and want to scroll Twitter."* 
+- **Entry State:** Alex opens **Chat** and toggles to **Dialogue with Future Self**. The message input box displays a calm, generic prompt: *"Ask your future self anything..."* without cluttering the screen with a long list of traits.
+- **Path:** Alex enters: *"I'm sitting at my desk feeling totally blocked and want to scroll Twitter."* Behind the scenes, the model receives Alex's complete Alter Ego profile (values, narrative, obstacle philosophy, behaviors) and relevant habit history.
 - **Climax:** Drawing on Alex's defined Alter Ego values (*"Presence, Courage, Play"*) and obstacle strategy (*"Writes one bad sentence to break the dam"*), the future self responds in reflective serif voice: *"Remember that perfection is just fear in a suit. What is the worst, most messy sentence you could put on paper right now? Write just that one."*
+- **Guardrail & Redirection:** When Alex asks an empirical calculation question (*"What was my check-in percentage for meditation last Tuesday?"*), Future Self recognizes this belongs to metrics analysis and responds: *"That's a question for your Objective Mirror,"* with an interactive button `Switch to Objective Mirror →` to switch views instantly.
 - **Resolution:** Alex closes the app inspired, writes the first line, and logs a micro-win.
 
 ---
@@ -151,6 +153,15 @@ Users can toggle check-ins exclusively for the current local calendar date (`dat
 Following a check-in, the card displays a 5-point neutral mood selector (1 = Low, 5 = High) and an optional prompt to add a note to the journal.
 - **Consequences:** Selecting mood updates the check-in event in place. Notes are saved to `state.journal` with `kind: "completion_note"` and tagged with the habit ID.
 
+#### FR-9b: Physical Notebook Journal with Dynamic Lined Pages
+The Journal writing area MUST present a tactile physical notebook aesthetic with horizontal ruled lines.
+- **Consequences:**
+  - **Horizontal Ruled Lines:** The entry writing area features horizontal ruled lines across the page, evoking a physical paper notebook.
+  - **Taller Page Proportions:** The journaling viewport and writing canvas provide a taller, spacious vertical dimension so the ruled lines feel natural and inviting rather than a compressed input box.
+  - **Dynamic Line Expansion:** Ruled lines generate dynamically as the entry grows in length, ensuring the user's text always sits continuously on lines regardless of entry length.
+  - **Precise Typographic Alignment:** Text font size and `line-height` must strictly align with the ruled line spacing (e.g., `line-height: 28px` on a `28px` grid) so characters rest directly on the ruled lines without visual drift.
+  - **Warm Notebook Aesthetic:** Designed with warm, human, relatable paper styling (`--ruled-line-paper` / `--ruled-line-night`), transforming the journal from a clinical digital text box into an intimate sanctuary.
+
 #### FR-10: Never-Miss-Twice Nudge
 The system MUST evaluate whether a habit was missed yesterday and remains unlogged today.
 - **Consequences:** If active, the card displays a calm nudge offering the two-minute version. Completing the two-minute version records a `version: "minimal"` check-in, preserving streak continuity. Tapping "Not today" suppresses the nudge until the next calendar date.
@@ -198,9 +209,12 @@ The system MUST make the Weekly Review card sequence available from Sunday 18:00
 ### 4.6 Identity System & Alter Ego
 **Description:** Framework for articulating the ideal future self, simulating challenging scenarios, and formulating WOOP obstacle plans. Realizes UJ-5.
 
-#### FR-18: Alter Ego Profile
+#### FR-18: Alter Ego Profile & Prompt Representation
 Users can define an Alter Ego profile consisting of an optional name, rich narrative description, 3 core values, an obstacle handling philosophy, and 3 specific behavioral habits.
-- **Consequences:** Requires at least description and 3 behaviors before unlocking Future-Self chat mode.
+- **Consequences:** 
+  - Requires at least description and 3 behaviors before unlocking Future-Self chat mode.
+  - **Shortened Prompt Message:** In Dialogue with Future Self, the message input box prompt/placeholder MUST be concise and generic (e.g., *"Ask your future self anything..."*). The full list of described characteristics MUST NOT be enumerated in the input box, preventing cognitive clutter.
+  - **Contextual Ingestion:** All described Alter Ego traits, core values, obstacle philosophy, and behaviors are supplied directly to the local model behind the scenes in the system context.
 
 #### FR-19: Offline Scenario Simulator
 Before an LLM provider is connected, the scenario simulator MUST generate templated self-reflection prompts mapping the user's input scenario to their Alter Ego's obstacle style and 3 defined behaviors.
@@ -213,25 +227,28 @@ Users can author WOOP entries (Wish, Outcome, Obstacle, Plan: *"If {obstacle}, t
 ---
 
 ### 4.7 Dual-Mode AI Reflection Layer & Privacy Firewall
-**Description:** Client-directed LLM integration providing objective data reflection (Mirror Mode) and archetypal identity coaching (Future-Self Mode) behind a strict privacy firewall. Realizes UJ-4, UJ-5.
+**Description:** Local LLM integration via Ollama providing personalized, contextual introspection across two distinct, guardrailed modes: objective habit reflection (Objective Mirror) and archetypal identity mentorship (Dialogue with Future Self), with graceful offline degradation. Realizes UJ-4, UJ-5.
 
-#### FR-21: Dual Conversation Modes
-The Chat interface MUST support two distinct, togglable modes:
-1. **Mirror Mode:** Reflects empirical habit metrics, consistency rates, and detected patterns using UI voice.
-2. **Future-Self Mode:** Emulates the user's Alter Ego, offering advice strictly grounded in the user's defined values and obstacle techniques using Identity voice.
-- **Consequences:** Both modes are bounded by system prompts enforcing concise replies ($< 120$ words), single-suggestion limits, and mandatory crisis disclaimers for expressions of acute distress.
+#### FR-21: Distinct Chat Roles, Guardrails & Bidirectional Redirection
+The Chat interface MUST support two distinct, togglable modes with strict role boundaries:
+1. **The Objective Mirror:** Provides purely objective, factual, empirical reflection on the user's habits, check-in consistency, recovery windows, and detected patterns using calm UI voice. The Objective Mirror MUST NOT provide speculative life coaching, emotional reassurance, or identity philosophy.
+2. **Dialogue with Future Self:** Emulates the user's envisioned future self, providing reflective guidance and mindset coaching grounded in the user's defined Alter Ego values, narrative, and obstacle handling philosophy using warm serif voice. Future Self MUST NOT calculate raw habit metrics or analyze statistical logs.
+- **System Prompt Guardrails:** Each mode is enforced by distinct system prompts containing explicit boundary rules preventing role creep.
+- **Bidirectional Cross-Chat Redirection:**
+  - If a user asks a Future-Self / identity / emotional guidance question in Objective Mirror, the model recognizes it as out of scope, responds with an explicit redirection notice (e.g., *"That's a question for your Future Self."*), and provides an interactive button/link (`Switch to Future Self →`) that switches the user directly to the Future Self chat.
+  - If a user asks an Objective Mirror / quantitative streak / metrics question in Dialogue with Future Self, the model recognizes it as out of scope, responds with an explicit redirection notice (e.g., *"That's a question for your Objective Mirror."*), and provides an interactive button/link (`Switch to Objective Mirror →`) that switches the user directly to the Objective Mirror chat.
+- **Response Constraints:** Both modes are bounded by system prompts enforcing concise replies ($< 120$ words), single-suggestion limits, and mandatory crisis disclaimers for expressions of acute distress.
 
-#### FR-22: Privacy Firewall & Payload Transparency
-The system MUST default to transmitting aggregated numerical and categorical metadata only.
-- **Consequences:** Raw journal text is filtered out by default. Including journal text requires a manual, single-turn checkbox selection. Entries flagged `private: true` are never transmitted. A persistent privacy chip allows users to preview the exact JSON payload prior to submission.
+#### FR-22: Context Injection & Privacy Firewall
+Responses in both chat modes draw dynamically on the user's local context: active habits, check-in history, journal reflections, and described future-self characteristics.
+- **Consequences:** Raw journal text is filtered out by default or included only when permitted, and entries flagged `private: true` are strictly excluded from context. A persistent privacy chip displays the active payload scope.
 
-#### FR-23: Flexible Provider Adapter Architecture
-Users can configure an LLM provider in Me > Settings:
-- **None (Default):** Chat tab displays offline templated reflection.
-- **Google Gemini (Primary Cloud Adapter):** Direct browser-to-Google HTTPS requests to `generativelanguage.googleapis.com` using Gemini 2.5 Flash. Native browser CORS support, generous free tier via Google AI Studio 1-click key generation, and seamless architectural transition path to edge proxy injection for zero-config public launch.
-- **Local Ollama:** Direct HTTP requests to `http://localhost:11434` on the user's local machine for air-gapped on-device inference.
-- **Bring-Your-Own API Key (BYOK):** Direct browser HTTPS requests to other providers (e.g. Anthropic, OpenAI) as secondary options.
-- **Consequences:** API keys are stored in `state.settings.ai` and encrypted when encryption is active. Zero requests transit developer-operated servers in v1.
+#### FR-23: Local LLM via Ollama & Graceful Offline Fallback
+The system MUST integrate a local LLM via Ollama (`http://localhost:11434`) to generate personalized, contextual responses in both chat modes.
+- **Consequences:**
+  - **Local Air-Gapped Inference:** Calls `http://localhost:11434/api/generate` with contextual payloads (habits, journal entries, future-self profile) for complete on-device privacy.
+  - **Graceful Offline Degradation:** If the Ollama daemon is unreachable, offline, or returns an error, the application MUST remain 100% functional. The interface displays a non-blocking toast/notice informing the user of Ollama's unavailability and seamlessly falls back to static templated reflection responses without interrupting user flow or losing drafted input.
+  - **Alternative Providers:** Users can optionally configure external cloud providers (Gemini 2.5 Flash, BYOK Anthropic/OpenAI) in Me > Settings if preferred.
 
 ---
 
@@ -328,6 +345,7 @@ graph TD
 
 ### 8.1 Aesthetic & Tone (Sally / UX Alignment)
 - **Palette Tokens:** Warm paper notebook (`--bg-page: #FAF8F5`) for light mode; desaturated slate navy (`--bg-page: #151A24`) with warm amber accents (`--accent-future: #E0A94F`) for night mode. Pure black and pure white in Night mode are prohibited.
+- **Physical Notebook Journal Canvas:** Journal writing surface utilizes a repeating linear gradient of horizontal ruled lines (`28px` grid cadence; `--ruled-line-paper` / `--ruled-line-night`). Container possesses taller, generous viewport height (min 320px) so ruled lines feel natural. Lines dynamically expand with entry length, and typographic line-height is locked to 28px to eliminate baseline drift.
 - **Typography:** Dual-font hierarchy: System sans-serif (`--font-ui`) for tool labels, buttons, and stats; Serif (`--font-voice`: Georgia/Palatino) for identity statements, journal entries, and Future-Self dialogue.
 - **Zero-Shame Copy:** System copy must remain quiet, curious, and second-person. Misses are stated factually (*"Yesterday was a miss"*). Warning icons, red badges, exclamation marks, and accusatory copy are strictly prohibited.
 
@@ -339,21 +357,27 @@ graph TD
 ### 8.3 Performance & Reliability
 - **Bundle Footprint:** Vanilla JavaScript; zero client bundle compilation; initial page load in $< 200$ ms.
 - **Memory Safety:** Storage operations wrapped in strict `try/catch` blocks; storage quota exhaustion triggers safe in-memory fallback with emergency backup export prompt.
+- **Graceful AI Degradation:** Chat failures or offline daemon states (e.g. Ollama unreachable at localhost:11434) must cleanly fall back to offline reflection or notify without throwing uncaught exceptions or blocking user input.
 
 ---
 
 ## 9. Open Questions (Settled)
-1. **Default AI Provider Selection:** Settled on default **"None"** (offline templated reflection) until the user explicitly selects local Ollama or Bring-Your-Own-Key in Me > Settings.
-2. **Push Delivery Channel:** Settled on **RFC 5545 `.ics` export** plus in-tab browser notifications for v1; external webhook/bot push deferred.
-3. **Calendar Week Boundary:** Settled on **Sunday** week start (matching contribution grid) with optional Monday preference toggle.
-4. **Encryption Enforcement:** Settled on **optional** on-demand passphrase encryption in Me > Privacy and Data with gentle 30-day export reminders.
-5. **Category Customization:** Settled on **fixed 5 categories** (Health, Learning, Creativity, Mindfulness, Connection) for Phases 1–5; custom categories evaluated in Phase 6.
+1. **Local LLM & Chat Provider Selection:** Settled on **Local Ollama** (`http://localhost:11434`) as the primary local LLM engine for personalized responses in both Mirror and Future-Self modes, using habit and non-private journal context, with graceful degradation to static/templated reflection when Ollama is offline or unavailable. Optional BYOK cloud keys remain available in Me > Settings.
+2. **Future-Self Message Box UX:** Settled on a **short, generic prompt** (e.g. *"Ask your future self anything..."*) to prevent prompt bloat, passing all user-authored Alter Ego traits exclusively behind the scenes in the system prompt.
+3. **Chat Role Enforcement & Redirection:** Settled on **strict system prompt guardrails** separating Objective Mirror (factual habit metrics) from Dialogue with Future Self (mindset and values coaching). Questions out of scope trigger explicit redirection text plus a clickable button (`Switch to Future Self →` or `Switch to Objective Mirror →`).
+4. **Journal Tactile Redesign:** Settled on a **physical lined notebook aesthetic** with dynamic horizontal ruled lines, taller viewport height, and strict 28px typographic baseline alignment.
+5. **Push Delivery Channel:** Settled on **RFC 5545 `.ics` export** plus in-tab browser notifications for v1; external webhook/bot push deferred.
+6. **Calendar Week Boundary:** Settled on **Sunday** week start (matching contribution grid) with optional Monday preference toggle.
+7. **Encryption Enforcement:** Settled on **optional** on-demand passphrase encryption in Me > Privacy and Data with gentle 30-day export reminders.
+8. **Category Customization:** Settled on **fixed 5 categories** (Health, Learning, Creativity, Mindfulness, Connection) for Phases 1–5; custom categories evaluated in Phase 6.
 
 ---
 
 ## 10. Assumptions Index
 - `[ASSUMPTION §4.2 FR-5]`: Habit categories remain fixed to the canonical 5 to ensure consistent color tokens and prevent cognitive overload.
-- `[ASSUMPTION §4.7 FR-21]`: AI chat responses should be strictly constrained under 120 words to encourage personal reflection rather than conversational attachment.
-- `[ASSUMPTION §4.7 FR-23]`: Zero cloud backend proxies are deployed in v1; direct browser fetch to Anthropic/OpenAI or local Ollama is accepted for personal use.
+- `[ASSUMPTION §4.3 FR-9b]`: Lined notebook grid is standardized at 28px spacing matching `line-height: 28px` in `--font-voice` across light and night modes.
+- `[ASSUMPTION §4.6 FR-18]`: Future-Self prompt box is generic to maintain aesthetic calm, while all persona attributes are injected into model context behind the scenes.
+- `[ASSUMPTION §4.7 FR-21]`: Cross-chat redirection triggers when out-of-scope intent is detected, returning actionable switch buttons alongside courteous redirection text.
+- `[ASSUMPTION §4.7 FR-23]`: Local Ollama runs on `localhost:11434`; when offline, system defaults to static templated fallback so the app remains fully functional offline.
 - `[ASSUMPTION §4.8 FR-24]`: `.ics` calendar subscriptions are distributed via file download rather than a live CalDAV/webcal server.
 - `[ASSUMPTION §8.1]`: Final visual polish, micro-animations, and specific layout refinements will be validated in collaboration with UX Designer Sally (`bmad-ux`).

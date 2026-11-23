@@ -1,0 +1,98 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  getRollingPulse,
+  evaluatePatterns,
+  getRecurringThemes,
+  getWeeklyReview
+} from '../../js/domain/insights.js';
+
+describe('Story 2.4, 2.5, 2.6: Insights & Pattern Engine', () => {
+  it('getRollingPulse aggregates last 7 days votes across normalized identities', () => {
+    const t = '2026-05-10';
+    const state = {
+      habits: [
+        { id: 'h1', identity: 'A reader', name: 'Read pages', category: 'Learning' },
+        { id: 'h2', identity: 'A Reader', name: 'Read book', category: 'Learning' },
+        { id: 'h3', identity: 'A calm mind', name: 'Meditate', category: 'Mindfulness' },
+      ],
+      events: [
+        { id: 'e1', habitId: 'h1', type: 'checkin', date: '2026-05-09' },
+        { id: 'e2', habitId: 'h2', type: 'checkin', date: '2026-05-10' },
+        { id: 'e3', habitId: 'h3', type: 'checkin', date: '2026-05-10' },
+        { id: 'e4', habitId: 'h1', type: 'checkin', date: '2026-04-01' }, // older than 7 days
+      ]
+    };
+
+    const pulse = getRollingPulse(state, t);
+    assert.equal(pulse.totalVotes, 3);
+    assert.equal(pulse.identities.length, 2);
+    // Reader has 2 votes
+    assert.equal(pulse.identities[0].identity, 'A reader');
+    assert.equal(pulse.identities[0].votes, 2);
+    assert.equal(pulse.identities[1].identity, 'A calm mind');
+    assert.equal(pulse.identities[1].votes, 1);
+  });
+
+  it('evaluatePatterns reports cold start when total logged days < 7', () => {
+    const state = {
+      habits: [{ id: 'h1', name: 'Floss', identity: 'Healthy' }],
+      events: [
+        { id: 'e1', habitId: 'h1', type: 'checkin', date: '2026-05-01' },
+        { id: 'e2', habitId: 'h1', type: 'checkin', date: '2026-05-02' },
+      ]
+    };
+    const res = evaluatePatterns(state, '2026-05-05');
+    assert.equal(res.coldStart, true);
+    assert.equal(res.totalLoggedDays, 2);
+    assert.equal(res.milestones.length, 4);
+    assert.equal(res.patterns.length, 0);
+  });
+
+  it('getRecurringThemes locks under 8 entries and detects top recurring words across >= 3 entries', () => {
+    // Under 8 entries
+    const under8 = {
+      journal: [
+        { id: 'j1', text: 'focus and clarity' },
+        { id: 'j2', text: 'focus was tough' },
+      ]
+    };
+    const locked = getRecurringThemes(under8);
+    assert.equal(locked.unlocked, false);
+    assert.equal(locked.entryCount, 2);
+
+    // 8 entries with "clarity" in 3 entries
+    const with8 = {
+      journal: [
+        { id: 'j1', text: 'Looking for clarity in the morning' },
+        { id: 'j2', text: 'Gained great clarity today' },
+        { id: 'j3', text: 'Moments of clarity while walking' },
+        { id: 'j4', text: 'Routine day without friction' },
+        { id: 'j5', text: 'Short reflection about work' },
+        { id: 'j6', text: 'Quiet evening at home' },
+        { id: 'j7', text: 'Another productive session' },
+        { id: 'j8', text: 'Closing the week with gratitude' },
+      ]
+    };
+
+    const res = getRecurringThemes(with8);
+    assert.equal(res.unlocked, true);
+    assert.ok(res.themes.length >= 1);
+    const clarityTheme = res.themes.find(t => t.word === 'clarity');
+    assert.ok(clarityTheme);
+    assert.equal(clarityTheme.count, 3);
+  });
+
+  it('getWeeklyReview synthesizes pulse, pattern, and theme prompt', () => {
+    const state = {
+      habits: [{ id: 'h1', identity: 'Writer', name: 'Write', category: 'Creativity' }],
+      events: [{ id: 'e1', habitId: 'h1', type: 'checkin', date: '2026-05-10' }],
+      journal: []
+    };
+    const review = getWeeklyReview(state, '2026-05-10');
+    assert.ok(review.reflectionPrompt);
+    assert.equal(review.topIdentity.identity, 'Writer');
+    assert.equal(review.totalWeeklyVotes, 1);
+  });
+});
+
