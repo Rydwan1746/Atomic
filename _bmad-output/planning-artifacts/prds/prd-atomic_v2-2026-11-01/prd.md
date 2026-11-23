@@ -246,7 +246,7 @@ Responses in both chat modes draw dynamically on the user's local context: activ
 #### FR-23: Local LLM via Ollama & Graceful Offline Fallback
 The system MUST integrate a local LLM via Ollama (`http://localhost:11434`) to generate personalized, contextual responses in both chat modes.
 - **Consequences:**
-  - **Local Air-Gapped Inference:** Calls `http://localhost:11434/api/generate` with contextual payloads (habits, journal entries, future-self profile) for complete on-device privacy.
+  - **Local Air-Gapped Inference:** Calls `http://localhost:11434/api/chat` (as built; originally specified as `/api/generate`) with the mode's contextual payload (Mirror: aggregated habit metrics; Future Self: Alter Ego profile, identities, WOOP plans; journal text only on per-message opt-in) for complete on-device privacy.
   - **Graceful Offline Degradation:** If the Ollama daemon is unreachable, offline, or returns an error, the application MUST remain 100% functional. The interface displays a non-blocking toast/notice informing the user of Ollama's unavailability and seamlessly falls back to static templated reflection responses without interrupting user flow or losing drafted input.
   - **Alternative Providers:** Users can optionally configure external cloud providers (Gemini 2.5 Flash, BYOK Anthropic/OpenAI) in Me > Settings if preferred.
 
@@ -271,6 +271,11 @@ Users can enable optional in-tab browser notifications via the native `Notificat
 #### FR-26: Full-State Passphrase Encryption
 Users can activate passphrase protection in Me > Privacy and Data.
 - **Consequences:** Encrypts the entire state blob using AES-256-GCM with a PBKDF2 (HMAC-SHA256, 600,000 iterations) derived key and 16-byte random salt. Keys remain strictly in transient memory. Forgotten passphrases result in permanent data loss with no backdoor recovery.
+
+---
+
+### Implementation Status (as of 2026-11-23)
+Section 4.7 (FR-21 to FR-23) is implemented; see the "As-Built Notes" at the end of `addendum.md` §5 for where the code differs from this text. The per-requirement status of every FR (done, partial, not started) is kept in the repository `README.md` under **Status**, which is the single place updated as work lands.
 
 ---
 

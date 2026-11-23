@@ -2,51 +2,60 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildSafePayload, formatPrivacyChipLabel } from '../../js/ai/firewall.js';
 
-describe('Story 4.1: Client-Side Privacy Firewall', () => {
-  it('builds aggregated numerical metadata and strictly excludes raw journal by default', () => {
-    const state = {
-      habits: [
-        { id: 'h1', name: 'Exercise', identity: 'Athlete', category: 'Health', createdAt: '2026-05-01' }
-      ],
-      events: [
-        { id: 'e1', habitId: 'h1', type: 'checkin', date: '2026-05-10' }
-      ],
-      journal: [
-        { id: 'j1', text: 'Private thoughts', private: true },
-        { id: 'j2', text: 'Normal thoughts', private: false }
-      ]
-    };
+const state = () => ({
+  habits: [{ id: 'h1', name: 'Exercise', identity: 'Athlete', category: 'Health', createdAt: '2026-05-01T08:00:00.000Z', twoMinuteVersion: 'Put on shoes' }],
+  events: [{ id: 'e1', habitId: 'h1', type: 'checkin', date: '2026-05-10' }],
+  journal: [
+    { id: 'j1', date: '2026-05-09', text: 'Top secret diary', private: true },
+    { id: 'j2', date: '2026-05-10', text: 'Public reflection', private: false }
+  ],
+  alterEgo: { name: 'Sage', narrative: 'Calm and steady', coreValues: ['Patience'], obstacleStrategy: 'Rest before quitting', behaviors: ['Walk', 'Read', 'Breathe'] },
+  woop: [{ id: 'w1', wish: 'Run 5k', outcome: 'Energy', obstacle: 'Rain', plan: 'If it rains, then I will run indoors' }],
+  scorecard: [{ id: 's1', name: 'Coffee', rating: '=' }]
+});
 
-    const payload = buildSafePayload(state, 'mirror');
-
-    assert.equal(payload.mode, 'mirror');
-    assert.equal(payload.habits.length, 1);
-    assert.equal(payload.habits[0].name, 'Exercise');
-    assert.ok('consistency30d' in payload.habits[0]);
-
-    // Zero raw journal entries included by default
-    assert.equal(payload.journalSnippets.length, 0);
-    assert.equal(payload.privacyVerification.strictlyExcludedPrivateEntriesCount, 1);
-
-    const label = formatPrivacyChipLabel(payload);
-    assert.ok(label.includes('0 raw journal entries shared'));
+describe('Privacy firewall: per-mode separation', () => {
+  it('Mirror payload carries metrics and no Alter Ego', () => {
+    const p = buildSafePayload(state(), 'mirror');
+    assert.equal(p.mode, 'mirror');
+    const hb = p.context.habits[0];
+    assert.equal(hb.name, 'Exercise');
+    for (const k of ['consistency30dPercent', 'currentStreakDays', 'longestStreakDays', 'averageRecoveryDays']) assert.ok(k in hb, k);
+    assert.equal('alterEgo' in p.context, false);
+    assert.equal(JSON.stringify(p).includes('Rest before quitting'), false);
+    assert.deepEqual(p.context.scorecard, { positive: 0, negative: 0, neutral: 1 });
   });
 
-  it('strictly excludes entries with private: true even if opted in', () => {
-    const state = {
-      habits: [],
-      events: [],
-      journal: [
-        { id: 'j1', text: 'Top secret diary', private: true },
-        { id: 'j2', text: 'Public reflection', private: false }
-      ]
-    };
-
-    const payload = buildSafePayload(state, 'mirror', { includeJournalOptIn: true });
-
-    assert.equal(payload.journalSnippets.length, 1);
-    assert.equal(payload.journalSnippets[0].text, 'Public reflection');
-    assert.equal(payload.journalSnippets.some(j => j.text.includes('Top secret')), false);
+  it('Future payload carries the Alter Ego and no numbers', () => {
+    const p = buildSafePayload(state(), 'future');
+    assert.equal(p.context.alterEgo.name, 'Sage');
+    assert.deepEqual(p.context.identities, ['Athlete']);
+    assert.equal(p.context.habits[0].twoMinuteVersion, 'Put on shoes');
+    assert.equal(p.context.woopPlans[0].plan, 'If it rains, then I will run indoors');
+    const json = JSON.stringify(p.context);
+    for (const k of ['consistency', 'Streak', 'checkIns', 'votes', 'patterns']) assert.equal(json.includes(k), false, k);
   });
 });
 
+describe('Privacy firewall: journal text', () => {
+  it('excludes journal text by default', () => {
+    for (const mode of ['mirror', 'future']) {
+      const p = buildSafePayload(state(), mode);
+      assert.equal(p.journalSnippets.length, 0);
+      assert.equal(JSON.stringify(p).includes('reflection'), false);
+      assert.equal(p.privacyVerification.privateEntriesExcluded, 1);
+    }
+  });
+
+  it('includes non-private entries only when opted in, never private ones', () => {
+    const p = buildSafePayload(state(), 'mirror', { includeJournalOptIn: true });
+    assert.equal(p.journalSnippets.length, 1);
+    assert.equal(p.journalSnippets[0].text, 'Public reflection');
+    assert.equal(JSON.stringify(p).includes('Top secret'), false);
+  });
+
+  it('labels the chip with the payload scope', () => {
+    assert.ok(formatPrivacyChipLabel(buildSafePayload(state(), 'mirror')).includes('Aggregated stats only, no journal text'));
+    assert.ok(formatPrivacyChipLabel(buildSafePayload(state(), 'future', { includeJournalOptIn: true })).includes('+ 1 journal entry'));
+  });
+});

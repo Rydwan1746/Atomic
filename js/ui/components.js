@@ -2,12 +2,18 @@ import { today } from '../core/dates.js';
 
 export function h(tag, attrs = {}, ...kids) {
   const e = document.createElement(tag);
+  let value;
   for (const [k, v] of Object.entries(attrs)) {
     if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
     else if (k === 'class') e.className = v;
+    else if (k === 'value') value = v;   // set as a property below: <textarea> ignores a value attribute
     else if (v !== false && v != null) e.setAttribute(k, v === true ? '' : v);
   }
   e.append(...kids.flat().filter(x => x != null && x !== false));
+  if (value != null) {
+    if (tag === 'option') e.setAttribute('value', value);
+    else e.value = value;               // after children, so <select> can match its options
+  }
   return e;
 }
 

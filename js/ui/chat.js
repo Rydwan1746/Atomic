@@ -1,177 +1,209 @@
 import * as S from '../core/storage.js';
-import { h } from './components.js';
+import { id } from '../core/ids.js';
+import { h, announce } from './components.js';
 import { buildSafePayload, formatPrivacyChipLabel } from '../ai/firewall.js';
-import { sendChatMessage } from '../ai/adapters.js';
+import { ask, noticeText, auditEntry, aiSettings, PROVIDERS } from '../ai/index.js';
 import { isAlterEgoConfigured } from '../domain/alter-ego.js';
+import { MODES } from '../ai/guardrails.js';
 
-let currentMode = 'mirror'; // 'mirror' | 'future'
+const AUDIT_LIMIT = 30;
+
+// Screen state that survives redraws (and navigation) for this tab.
+let currentMode = 'mirror';           // 'mirror' | 'future'
 let sending = false;
+const drafts = { mirror: '', future: '' };
+let includeJournal = false;           // resets after every send (single-message opt-in)
+let notice = null;                    // { mode, text }
+
+const isChatVisible = () => (location.hash.replace('#/', '') || 'today') === 'chat';
 
 export function render(el) {
   const st = S.load();
-  const redraw = () => render(el);
-
-  // Initialize chatHistory in state if missing
   st.chatHistory = st.chatHistory || [];
+  const redraw = () => { if (isChatVisible()) render(el); };
 
   const isFuture = currentMode === 'future';
   const accentVar = isFuture ? 'var(--accent-future)' : 'var(--accent-mirror)';
   const fontVar = isFuture ? 'var(--font-voice)' : 'var(--font-ui)';
-  const alterEgoReady = isAlterEgoConfigured(st.alterEgo);
+  const settings = aiSettings(st);
+  const futureName = st.alterEgo?.name || 'Future Self';
 
-  // Mode Switcher Tabs
-  const modeSwitcher = h('div', { class: 'switcher', role: 'tablist', style: 'margin-bottom:12px' },
-    h('button', {
-      type: 'button',
-      class: 'switcher-tab ' + (currentMode === 'mirror' ? 'active' : 'inactive'),
-      onclick: () => { currentMode = 'mirror'; redraw(); }
-    }, 'The Objective Mirror'),
-    h('button', {
-      type: 'button',
-      class: 'switcher-tab ' + (currentMode === 'future' ? 'active' : 'inactive'),
-      onclick: () => { currentMode = 'future'; redraw(); }
-    }, 'Dialogue with Future Self')
+  const switchTo = (mode, prefill) => {
+    currentMode = mode;
+    if (prefill && !drafts[mode]) drafts[mode] = prefill;
+    redraw();
+  };
+
+  const modeSwitcher = h('div', { class: 'switcher', role: 'tablist', 'aria-label': 'Chat mode' },
+    ['mirror', 'future'].map(m => h('button', {
+      type: 'button', role: 'tab',
+      'aria-selected': String(currentMode === m),
+      class: 'switcher-tab ' + (currentMode === m ? 'active' : 'inactive'),
+      onclick: () => switchTo(m)
+    }, m === 'mirror' ? 'The Objective Mirror' : 'Dialogue with Future Self'))
   );
 
-  // Payload for privacy chip
-  const safePayload = buildSafePayload(st, currentMode);
-  const privacyChipText = formatPrivacyChipLabel(safePayload);
+  const providerLine = h('p', { class: 'sub', style: 'font-size:13px' },
+    settings.provider === 'none'
+      ? ['AI reflection is off: replies are offline reflections. ', h('a', { href: '#/me', class: 'ghost-link' }, 'Connect a model in Me →')]
+      : `Replies from ${PROVIDERS[settings.provider]}${settings[settings.provider]?.model ? ` · ${settings[settings.provider].model}` : ''}.`
+  );
 
-  const privacyChip = h('button', {
-    type: 'button',
-    class: 'btn-text chip',
-    style: 'align-self:flex-start;font-size:12px;margin-bottom:8px;cursor:pointer',
-    onclick: () => showPayloadPreview(safePayload)
-  }, privacyChipText);
-
-  // Gate for Future-Self Mode
-  if (isFuture && !alterEgoReady) {
-    el.replaceChildren(...[
+  // Gate for Future-Self mode (FR-18)
+  if (isFuture && !isAlterEgoConfigured(st.alterEgo)) {
+    el.replaceChildren(
       h('h1', { class: 'greet' }, 'Dialogue with Your Future Self'),
       modeSwitcher,
-      privacyChip,
-      h('div', { class: 'card fresh-page-card', style: 'border:1px solid var(--accent-future);text-align:center;padding:32px 20px' },
-        h('h3', { class: 'voice', style: 'font-size:20px;margin-bottom:8px' }, 'Author Your Archetype First'),
-        h('p', { class: 'sub', style: 'margin-bottom:16px' },
-          'Before conversing with your future self, author their values, archetype narrative, and obstacle philosophy in Me > Alter Ego.'
-        ),
-        h('a', { class: 'btn primary', href: '#/me', style: 'display:inline-block;text-decoration:none' }, 'Go to Me > Alter Ego →')
+      h('div', { class: 'card', style: 'border:1px solid var(--accent-future);text-align:center;padding:32px 20px' },
+        h('h3', { class: 'voice', style: 'font-size:20px' }, 'Author your Alter Ego first'),
+        h('p', { class: 'sub' }, 'Before conversing with your future self, describe who they are and three things they do, in Me > Alter Ego.'),
+        h('a', { class: 'btn primary', href: '#/me', style: 'display:inline-flex;align-items:center;align-self:center;text-decoration:none' }, 'Set up Alter Ego →')
       )
-    ]);
+    );
     return;
   }
 
-  // Filter messages for current mode or show all
-  const messages = st.chatHistory.filter(m => !m.mode || m.mode === currentMode);
+  // The payload preview is exactly what the next message would send.
+  const previewPayload = buildSafePayload(st, currentMode, { includeJournalOptIn: includeJournal });
+  const privacyChip = h('button', {
+    type: 'button', class: 'chip', style: 'align-self:flex-start',
+    onclick: () => showPayloadPreview(previewPayload)
+  }, formatPrivacyChipLabel(previewPayload));
 
-  const messageList = h('div', {
-    style: 'display:flex;flex-direction:column;gap:12px;min-height:240px;margin-bottom:14px'
-  },
-    messages.length ? messages.map(m => {
-      const isUser = m.role === 'user';
-      return h('div', {
-        class: 'scorecard-row',
-        style: isUser
-          ? 'align-self:flex-end;max-width:85%;background:var(--bg-raised);border-radius:12px;padding:12px 14px'
-          : `align-self:flex-start;max-width:90%;background:var(--bg-card);border-left:4px solid ${accentVar};border-radius:12px;padding:14px;font-family:${fontVar}`
-      },
-        h('div', { class: 'sub', style: 'font-size:11px;margin-bottom:2px' },
-          isUser ? 'You' : (isFuture ? (st.alterEgo?.name || 'Future Self') : 'Objective Mirror')
-        ),
-        h('p', { style: 'font-size:15px;line-height:1.55;white-space:pre-wrap' }, m.text),
-        !isUser && h('div', { class: 'acts', style: 'margin-top:8px' },
-          h('a', { class: 'ghost-link', href: '#/journal', style: 'font-size:12px' }, 'Write in Journal →')
-        )
-      );
-    }) : h('div', { class: 'empty' },
+  const messages = st.chatHistory.filter(m => (m.mode || 'mirror') === currentMode);
+
+  const bubble = m => {
+    if (m.role === 'user') {
+      return h('div', { class: 'chat-msg user' },
+        h('div', { class: 'chat-who' }, 'You'),
+        h('p', {}, m.text));
+    }
+    const who = m.source === 'crisis' ? 'Atomic' : (isFuture ? futureName : 'Objective Mirror');
+    const tag = { offline: 'Offline reflection', redirect: 'Out of scope', crisis: 'Support' }[m.source];
+    return h('div', {
+      class: 'chat-msg assistant' + (m.source === 'crisis' ? ' crisis' : ''),
+      style: m.source === 'crisis' ? '' : `border-left-color:${accentVar};font-family:${fontVar}`
+    },
+      h('div', { class: 'chat-who' }, who, tag ? h('span', { class: 'chip', style: 'margin-left:8px;font-family:var(--font-ui)' }, tag) : null),
+      h('p', {}, m.text),
+      h('div', { class: 'acts', style: 'margin-top:6px' },
+        m.redirect ? h('button', {
+          type: 'button', class: 'btn',
+          onclick: () => switchTo(m.redirect, m.question)
+        }, m.redirect === 'future' ? 'Switch to Future Self →' : 'Switch to Objective Mirror →') : null,
+        m.source !== 'crisis' && m.source !== 'redirect'
+          ? h('a', { class: 'ghost-link', href: '#/journal' }, 'Write in Journal →') : null
+      )
+    );
+  };
+
+  const messageList = h('div', { class: 'chat-list', 'aria-live': 'polite' },
+    messages.length ? messages.map(bubble) : h('div', { class: 'empty' },
       isFuture
-        ? `Speak with ${st.alterEgo?.name || 'Your Future Self'}. What friction or victory are you bringing?`
-        : 'The Objective Mirror reflects your metrics and consistency patterns without judgment.'
-    )
+        ? `Speak with ${futureName}. What friction or victory are you bringing?`
+        : 'The Objective Mirror reflects your consistency, streaks and patterns without judgment.'),
+    sending ? h('div', { class: 'chat-msg assistant', style: `border-left-color:${accentVar}` },
+      h('p', { class: 'sub' }, 'Reflecting…')) : null
   );
 
-  let inputVal = '';
-  const inputEl = h('input', {
-    type: 'text',
-    placeholder: isFuture ? `Ask ${st.alterEgo?.name || 'your future self'} for guidance...` : 'Ask for an objective reflection on your habits...',
-    style: 'flex:1;min-height:44px',
-    autocomplete: 'off',
-    oninput: e => { inputVal = e.target.value; },
-    onkeydown: e => {
-      if (e.key === 'Enter') sendBtn.click();
-    }
+  const noticeBar = notice && notice.mode === currentMode
+    ? h('div', { class: 'chat-notice', role: 'status' },
+        h('span', {}, notice.text),
+        h('button', { type: 'button', class: 'btn-text', onclick: () => { notice = null; redraw(); } }, 'Dismiss'))
+    : null;
+
+  const inputEl = h('textarea', {
+    class: 'chat-input',
+    rows: 2,
+    'aria-label': isFuture ? 'Message your future self' : 'Message the Objective Mirror',
+    placeholder: isFuture ? 'Ask your future self anything...' : 'Ask about your habits, streaks or patterns...',
+    oninput: e => { drafts[currentMode] = e.target.value; },
+    onkeydown: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
   });
+  inputEl.value = drafts[currentMode];
 
-  const sendBtn = h('button', {
-    class: 'btn primary',
-    type: 'button',
-    disabled: sending,
-    onclick: async () => {
-      const q = inputVal.trim();
-      if (!q || sending) return;
+  const journalToggle = h('label', { class: 'inline-check' },
+    h('input', {
+      type: 'checkbox', checked: includeJournal,
+      onchange: e => { includeJournal = e.target.checked; redraw(); }
+    }),
+    'Include my recent journal text for this message');
 
-      sending = true;
+  async function send() {
+    const q = drafts[currentMode].trim();
+    if (!q || sending) return;
+    const mode = currentMode;
+    sending = true;
+    notice = null;
+    st.chatHistory.push({ id: id('msg'), role: 'user', text: q, mode, at: new Date().toISOString() });
+    S.save(st);
+    drafts[mode] = '';
+    const withJournal = includeJournal;
+    includeJournal = false;
+    redraw();
+
+    try {
+      const result = await ask(st, { message: q, mode, includeJournal: withJournal });
       st.chatHistory.push({
-        id: `msg_${Date.now()}`,
-        role: 'user',
-        text: q,
-        mode: currentMode,
-        at: new Date().toISOString()
+        id: id('msg'), role: 'assistant', text: result.text, mode,
+        source: result.source, redirect: result.redirect, question: result.redirect ? q : undefined,
+        provider: result.provider, at: new Date().toISOString()
       });
+      const entry = auditEntry(result);
+      if (entry) st.aiLog = [...(st.aiLog || []), entry].slice(-AUDIT_LIMIT);
+      const msg = noticeText(result, st);
+      notice = msg && result.notice === 'unavailable' ? { mode, text: msg } : null;
       S.save(st);
-      inputVal = '';
-      inputEl.value = '';
+      announce(result.source === 'redirect' ? 'Out of scope for this mode' : 'Reply received');
+    } finally {
+      sending = false;
       redraw();
-
-      try {
-        const reply = await sendChatMessage(st, q, currentMode);
-        st.chatHistory.push({
-          id: `msg_${Date.now() + 1}`,
-          role: 'assistant',
-          text: reply.text,
-          mode: currentMode,
-          at: new Date().toISOString()
-        });
-        S.save(st);
-      } finally {
-        sending = false;
-        redraw();
-      }
     }
-  }, sending ? 'Reflecting...' : 'Send');
+  }
 
-  const inputForm = h('div', { style: 'display:flex;gap:8px;align-items:center' }, inputEl, sendBtn);
+  const sendBtn = h('button', { class: 'btn primary', type: 'button', disabled: sending, onclick: send },
+    sending ? 'Reflecting…' : 'Send');
+
+  const clearBtn = messages.length ? h('button', {
+    type: 'button', class: 'btn-text', style: 'align-self:flex-start',
+    onclick: () => {
+      if (!confirm(`Clear this ${MODES[currentMode].label} conversation?`)) return;
+      st.chatHistory = st.chatHistory.filter(m => (m.mode || 'mirror') !== currentMode);
+      S.save(st);
+      redraw();
+    }
+  }, 'Clear this conversation') : null;
 
   el.replaceChildren(...[
     h('h1', { class: 'greet' }, isFuture ? 'Dialogue with Your Future Self' : 'The Objective Mirror'),
     modeSwitcher,
+    providerLine,
     privacyChip,
     messageList,
-    inputForm
-  ]);
+    noticeBar,
+    h('div', { class: 'chat-compose' }, inputEl, sendBtn),
+    journalToggle,
+    clearBtn
+  ].filter(Boolean));
+
+  if (!sending && isChatVisible()) inputEl.focus({ preventScroll: true });
 }
 
 function showPayloadPreview(payload) {
-  const modal = document.createElement('div');
-  modal.className = 'dlg';
-
-  const pre = h('pre', {
-    style: 'background:var(--bg-raised);padding:12px;border-radius:8px;font-size:12px;overflow:auto;max-height:300px'
-  }, JSON.stringify(payload, null, 2));
-
-  const closeBtn = h('button', {
-    class: 'btn primary',
-    type: 'button',
-    onclick: () => { if (modal.parentNode) modal.parentNode.removeChild(modal); }
-  }, 'Close Preview');
-
-  modal.appendChild(h('h2', {}, '🔒 Outbound Privacy Payload Preview'));
-  modal.appendChild(h('p', { class: 'sub' },
-    'Atomic v2 filters all raw journal entries by default. Strictly numerical and categorical data is transmitted.'
-  ));
-  modal.appendChild(pre);
-  modal.appendChild(h('div', { class: 'acts', style: 'margin-top:14px;justify-content:flex-end' }, closeBtn));
-
-  document.body.appendChild(modal);
+  const dlg = h('dialog', { class: 'dlg', 'aria-labelledby': 'payload-title' });
+  dlg.append(
+    h('h2', { id: 'payload-title' }, 'What the next message sends'),
+    h('p', { class: 'sub' }, payload.mode === 'future'
+      ? 'Future Self mode sends your Alter Ego profile, identity statements, habit names and WOOP plans. No numbers.'
+      : 'Mirror mode sends aggregated numbers only: consistency, streaks, recovery time, votes and detected patterns.'),
+    h('p', { class: 'sub' }, payload.journalSnippets.length
+      ? `${payload.journalSnippets.length} recent journal entries are included because you ticked the box. Entries marked "Never send to AI" are always excluded.`
+      : 'No journal text is included.'),
+    h('pre', { class: 'payload-pre' }, JSON.stringify(payload, null, 2)),
+    h('div', { class: 'acts', style: 'margin-top:14px;justify-content:flex-end' },
+      h('button', { class: 'btn primary', type: 'button', onclick: () => dlg.close() }, 'Close'))
+  );
+  dlg.addEventListener('close', () => dlg.remove());
+  document.body.appendChild(dlg);
+  dlg.showModal();
 }
-

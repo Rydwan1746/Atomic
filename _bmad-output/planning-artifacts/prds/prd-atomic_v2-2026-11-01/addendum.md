@@ -186,12 +186,12 @@ ROLE BOUNDARIES & GUARDRAILS:
 ### 5.2 Contextual Payload Construction for Local Ollama
 The contextual payload is assembled locally by `buildSafePayload()` and fed directly to Ollama:
 - **Habits Context:** Active habits, identities, categories, current streaks, 30-day consistency rates.
-- **Journal Context:** Recent journal entries and miss-reason notes (entries with `private: true` are strictly filtered out; only non-private entries are included).
+- **Journal Context:** Excluded by default. When the user ticks "Include my recent journal text" for a single message, the 3 most recent non-private entries are included (entries with `private: true` are always filtered out). This follows AD-5 in the architecture.
 - **Alter Ego Context (Future-Self Mode):** Name, narrative description, 3 core values, obstacle philosophy, and 3 specific behaviors.
 - **UI Decoupling:** In the UI, the Future Self input box displays a calm, generic prompt (*"Ask your future self anything..."*). Trait lists are never rendered in the input field.
 
 ### 5.3 Local On-Device Adapter (Ollama) & Graceful Fallback
-- **Endpoint:** `http://localhost:11434/api/generate` (or `/api/chat`).
+- **Endpoint:** `http://localhost:11434/api/chat` (configurable address in Me > AI reflection). `/api/chat` is used so the system prompt and recent same-mode turns are sent as separate messages.
 - **Transport:** HTTP POST with loopback fetch.
 - **Payload Schema:**
   ```json
@@ -209,6 +209,19 @@ The contextual payload is assembled locally by `buildSafePayload()` and fed dire
   - Network timeouts (e.g. 5-second `AbortController`) or connection-refused errors are caught silently without throwing.
   - Returns a graceful fallback object: `{ ok: true, provider: "offline-fallback", text: "...", mode: mode, offlineNotice: true }`.
   - UI displays an unobtrusive toast/status indicator: *"Local model offline at localhost:11434. Falling back to offline reflection."*
+
+---
+
+### 5.4 As-Built Notes (2026-11-23)
+Where the implementation differs from or adds to §5.1 to §5.3:
+- **Files:** `js/ai/index.js` (pipeline), `js/ai/firewall.js` (payloads), `js/ai/prompts.js` (system prompts), `js/ai/guardrails.js` (crisis, scope, reply cleaning), `js/ai/adapters.js` (transports), `js/ui/chat.js`, `js/ui/ai-settings.js`. The planned `js/ai/payload.js` and `js/ai/adapters/` folder were folded into these.
+- **Separation at the data level:** the Mirror payload carries metrics and no Alter Ego; the Future-Self payload carries the Alter Ego, identity statements, habit names and WOOP plans and no numbers.
+- **Checks before the model:** acute-distress messages get a fixed support reply and nothing is sent; clear out-of-scope questions are redirected without calling the model. Ambiguous ones are left to the model's `[REDIRECT:...]` token.
+- **Checks after the model:** redirect tokens become the switch button (and the reply is replaced by the canonical notice), markdown is stripped, replies are trimmed to 120 words, and sentences with numbers are removed from Future-Self replies.
+- **Ollama request:** `{ model, messages: [system, ...last 6 same-mode turns, user], stream: false, options: { temperature: 0.6, num_predict: 400 } }`. Generation timeout is 120 s because local models can be slow to load; a stopped daemon fails immediately.
+- **Fallback result:** `{ source: "offline", notice: "unavailable", error }`; the UI shows an inline, dismissible notice naming the address.
+- **Providers:** none (default), Ollama, Gemini, Anthropic, OpenAI. API keys stay in memory unless "Remember keys on this device" is ticked.
+- **Audit log:** the last 30 payloads sent are stored locally in `state.aiLog` and shown in Me > AI reflection.
 
 ---
 

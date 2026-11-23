@@ -255,13 +255,13 @@ Numbering is stable. Reference these numbers in commits and tasks.
   - Plain, short replies (under 120 words by default).
 - Chat history is stored locally (encrypted if encryption is on) and can be cleared per conversation and all at once.
 
-**S16. Provider settings (OPEN: owner picks the default).** Supported options in order of privacy:
+**S16. Provider settings.** Built (default: None). Supported options in order of privacy:
 1. **None** (default until configured): the chat tab shows templated reflection only.
 2. **Local Ollama:** requests go to `http://localhost:11434`. Desktop only. Private.
 3. **Bring-your-own API key:** requests go straight from the browser to the provider. The developer never receives data. Do not ship any key in the code. For Anthropic's API from a browser, the request needs the header `anthropic-dangerous-direct-browser-access: true` (verify in the current API docs before building).
 4. **In-browser model (WebLLM or transformers.js):** later, optional. Needs WebGPU and a large download.
 - **Avoid** a developer-run backend proxy while the app is personal, because it would put sensitive journal data on a server.
-- The API key is stored in the settings object and is encrypted with everything else when encryption is on. Show a warning that anything in the browser can be read by scripts running on the page.
+- The API key is kept in memory for the open tab, and stored in the settings object only when the user ticks "Remember keys on this device" (encrypted with everything else once at-rest encryption is built). Show a warning that anything in the browser can be read by scripts running on the page.
 
 **S17. Privacy controls.**
 - **Default payload:** aggregated stats only (consistency rates, insight findings, habit names, identity statements, alter ego profile). No journal text.
