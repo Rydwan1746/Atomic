@@ -141,6 +141,8 @@ graph TD
   - **Primary Cloud Adapter:** Google Gemini (`gemini-2.5-flash`) via `js/ai/adapters/gemini.js`. Utilizes standard browser HTTPS `fetch()` to `generativelanguage.googleapis.com` with native CORS support. Designed for direct 1-click Google AI Studio key onboarding during initial launch, with an architectural transition path to a serverless edge proxy (e.g., Cloudflare Worker / Firebase Function) injecting an app-level key for seamless, zero-config public deployment.
   - **On-Device & Secondary Adapters:** Local Ollama on `http://localhost:11434` for local air-gapped execution; secondary BYOK for Anthropic / OpenAI. If provider is `'none'`, system runs purely offline using templated reflective prompts. Responses are capped at 120 words with max 1 actionable suggestion.
 
+  - **As built (2026-11-23):** the payload builder lives in `js/ai/firewall.js` (no separate `payload.js`) and all transports share `js/ai/adapters.js` (no `adapters/` folder). Provider `'byok'` is split into `'anthropic'` and `'openai'`. See addendum §5.4.
+
 ### AD-6 — Full-State PBKDF2/AES-256-GCM Envelope with Ephemeral In-Memory Keys [ADOPTED]
 
 - **Binds:** `FR-26`, `js/core/crypto.js`, `js/core/storage.js`.

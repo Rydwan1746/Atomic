@@ -99,3 +99,17 @@ button.chip[aria-pressed=true]{background:var(--action-bg);color:var(--action-te
 .micro-note{font-size:12px;color:var(--text-muted);font-style:italic}
 .ghost-link{font-size:13px;color:var(--text-primary);text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;align-self:flex-start}
 
+.chat-list{display:flex;flex-direction:column;gap:12px;min-height:200px}
+.chat-msg{border-radius:12px;padding:12px 14px;max-width:90%;display:flex;flex-direction:column;gap:4px}
+.chat-msg p{font-size:15px;line-height:1.55;white-space:pre-wrap}
+.chat-msg.user{align-self:flex-end;background:var(--bg-raised);max-width:85%}
+.chat-msg.assistant{align-self:flex-start;background:var(--bg-card);border:1px solid var(--border);border-left:4px solid var(--accent-mirror)}
+.chat-msg.crisis{border-left-color:var(--text-primary);background:var(--bg-raised)}
+.chat-who{font-size:11px;color:var(--text-secondary);display:flex;align-items:center}
+.chat-notice{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--bg-raised);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text-secondary)}
+.chat-compose{display:flex;gap:8px;align-items:flex-end}
+.chat-compose .chat-input{flex:1;min-height:52px;font:16px/1.4 var(--font-ui);resize:vertical}
+.inline-check{flex-direction:row;align-items:center;gap:8px;font-weight:400;font-size:13px;color:var(--text-secondary)}
+.payload-pre{background:var(--bg-raised);padding:12px;border-radius:8px;font-size:12px;overflow:auto;max-height:300px;white-space:pre-wrap;word-break:break-word}
+.ai-log{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.ai-log details{background:var(--bg-raised);border-radius:8px;padding:8px 10px}

@@ -23,9 +23,11 @@ export function saveAlterEgo(state, data = {}) {
   };
 }
 
+// FR-18: Future-Self chat unlocks only once the profile has a description and 3 behaviors.
 export function isAlterEgoConfigured(alterEgo) {
   if (!alterEgo) return false;
-  return Boolean(alterEgo.obstacleStrategy || (alterEgo.coreValues && alterEgo.coreValues.length > 0));
+  const behaviors = (alterEgo.behaviors || []).filter(b => String(b).trim());
+  return Boolean((alterEgo.narrative || '').trim()) && behaviors.length >= 3;
 }
 
 export function getIdentityPortfolio(state, t = today()) {

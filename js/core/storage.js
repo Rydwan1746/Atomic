@@ -2,7 +2,7 @@
 const KEY = 'atomic.v2';
 const fresh = () => ({
   schemaVersion: 2, habits: [], events: [], journal: [], scorecard: [], alterEgo: null,
-  woop: [], reviews: [], chatHistory: [],
+  woop: [], reviews: [], chatHistory: [], aiLog: [],
   settings: { theme: 'auto', warmTint: false, weekStart: 'sunday', nudgeDismissed: {},
     lastBackupAt: null, encryption: false, ai: { provider: 'none' } }
 });

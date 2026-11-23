@@ -5,6 +5,7 @@ import * as AE from '../domain/alter-ego.js';
 import * as WOOP from '../domain/woop.js';
 import { generateIcs } from '../domain/reminders.js';
 import { encryptState, decryptState, isEncrypted } from '../core/crypto.js';
+import { aiSettingsCard } from './ai-settings.js';
 
 let simulatorOutput = null;
 
@@ -50,7 +51,7 @@ export function render(el) {
   const alterEgoCard = h('section', { class: 'card', style: 'border:1px solid var(--accent-future)' },
     h('div', { class: 'pill' }, 'Alter Ego Archetype Authoring'),
     h('h3', { class: 'voice' }, 'Define Your Future Self'),
-    h('p', { class: 'sub' }, 'Unlocks Future-Self AI guidance and scenario simulation.'),
+    h('p', { class: 'sub' }, 'A description and 3 behaviors unlock Future-Self chat. Scenario simulation works with any profile.'),
     h('form', {
       onsubmit: e => {
         e.preventDefault();
@@ -352,6 +353,7 @@ export function render(el) {
     alterEgoCard,
     woopCard,
     simulatorCard,
+    aiSettingsCard(st, redraw),
     sovereigntySection
   ]);
 }
