@@ -128,12 +128,20 @@ describe('System prompts', () => {
     assert.equal(s.includes('Rest before quitting'), false);
   });
 
+  it('renders the data as plain sentences, with recovery time spelled out', () => {
+    const s = buildSystemPrompt('mirror', buildSafePayload(st, 'mirror'));
+    assert.equal(s.includes('"currentStreakDays"'), false);
+    assert.ok(s.includes('"Read" (identity: Reader)'));
+    assert.ok(/never checked in so far/.test(s));
+    assert.equal(/exactly/.test(s), false);
+  });
+
   it('Future prompt speaks from the Alter Ego and forbids metrics', () => {
     const s = buildSystemPrompt('future', buildSafePayload(st, 'future'));
     assert.ok(s.includes('The Wise Mentor'));
     assert.ok(s.includes('Rest before quitting'));
     assert.ok(s.includes('[REDIRECT:mirror]'));
-    assert.ok(/do NOT calculate or quote metrics/.test(s));
+    assert.ok(/never state percentages/.test(s));
   });
 
   it('includes journal snippets only when present', () => {

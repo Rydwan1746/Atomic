@@ -79,7 +79,7 @@ export function render(el) {
         h('p', {}, m.text));
     }
     const who = m.source === 'crisis' ? 'Atomic' : (isFuture ? futureName : 'Objective Mirror');
-    const tag = { offline: 'Offline reflection', redirect: 'Out of scope', crisis: 'Support' }[m.source];
+    const tag = { offline: 'Offline reflection', crisis: 'Support' }[m.source];
     return h('div', {
       class: 'chat-msg assistant' + (m.source === 'crisis' ? ' crisis' : ''),
       style: m.source === 'crisis' ? '' : `border-left-color:${accentVar};font-family:${fontVar}`
@@ -90,7 +90,7 @@ export function render(el) {
         m.redirect ? h('button', {
           type: 'button', class: 'btn',
           onclick: () => switchTo(m.redirect, m.question)
-        }, m.redirect === 'future' ? 'Switch to Future Self →' : 'Switch to Objective Mirror →') : null,
+        }, m.redirect === 'future' ? 'Continue with your Future Self →' : 'Check with the Objective Mirror →') : null,
         m.source !== 'crisis' && m.source !== 'redirect'
           ? h('a', { class: 'ghost-link', href: '#/journal' }, 'Write in Journal →') : null
       )
@@ -154,7 +154,7 @@ export function render(el) {
       const msg = noticeText(result, st);
       notice = msg && result.notice === 'unavailable' ? { mode, text: msg } : null;
       S.save(st);
-      announce(result.source === 'redirect' ? 'Out of scope for this mode' : 'Reply received');
+      announce(result.redirect ? 'Reply received, with a suggestion to switch modes' : 'Reply received');
     } finally {
       sending = false;
       redraw();

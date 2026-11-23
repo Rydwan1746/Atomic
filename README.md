@@ -82,15 +82,19 @@ API keys are kept in memory for the open tab unless you tick "Remember keys on t
 3. In Atomic, open **Me > AI reflection**, choose **Local Ollama**, and press **Test connection**. It lists the installed models.
 4. If Atomic is opened from anything other than `localhost` or `127.0.0.1` (for example a hosted copy), Ollama blocks the browser request. Start Ollama with that address allowed, for example `OLLAMA_ORIGINS="https://your-host.example" ollama serve`.
 
-### Privacy and guardrails
+### Tone, hand-offs and guardrails
+
+Both modes talk conversationally: a short answer in their own voice, then one question back to you. Neither refuses a question outright. Each answers what it can from its own side, and when the other mode could help more, it says so in its own words and a **Continue with your Future Self →** or **Check with the Objective Mirror →** button appears under the reply. The button carries your question across.
 
 Every message goes through `js/ai/index.js`, in this order:
 
-1. **Distress check:** messages that suggest self-harm or acute distress get a fixed message pointing to real people and emergency services. Nothing is sent to any model.
-2. **Scope check:** clear-cut questions for the other mode (a metrics question to the Future Self, a motivation question to the Mirror) are redirected with a **Switch to …** button that carries your question across. Nothing is sent.
+1. **Distress check:** messages that suggest self-harm or acute distress get a fixed message pointing to real people and emergency services. Nothing is sent to any model. This is the only hard stop.
+2. **Scope check** (`js/ai/guardrails.js`): a question that clearly belongs to the other mode (a streak question to the Future Self, a motivation question to the Mirror) always gets the switch button. With a model connected, the model still answers it in its own lane; offline, you get a short hand-off message.
 3. **Firewall** (`js/ai/firewall.js`): each mode gets only its own context. The Mirror gets aggregated numbers and no Alter Ego. The Future Self gets the Alter Ego, identity statements, habit names and WOOP plans, and no numbers. Journal text is sent only if you tick "Include my recent journal text" for that one message (the box resets after sending). Entries marked "Never send to AI" are never sent.
-4. **System prompt** (`js/ai/prompts.js`): states the mode's role and boundaries, a 120-word limit, one suggestion at most, a crisis rule, and a `[REDIRECT:mirror|future]` token for out-of-scope questions.
-5. **Reply cleaning** (`js/ai/guardrails.js`): turns redirect tokens into the switch button, strips markdown, trims to 120 words, and removes any sentence with numbers from Future Self replies.
+4. **System prompt** (`js/ai/prompts.js`): describes the mode's voice and lane, a 120-word limit, at most one suggestion, a crisis rule, and how to hand off with a `[REDIRECT:mirror|future]` tag. The data is written as plain sentences rather than JSON, so small local models read the numbers correctly.
+5. **Reply cleaning** (`js/ai/guardrails.js`): turns a hand-off tag into the switch button while keeping the rest of the answer, ignores a hand-off away from a question that is clearly in scope, removes the stock "That's a question for…" line small models tend to copy into every reply, strips markdown and "Observation:" labels, trims to 120 words, and removes any sentence with numbers from Future Self replies.
+
+Small local models follow these instructions less reliably than large ones. `llama3.2` (3B) works; an 7B to 8B model such as `qwen2.5:7b` or `llama3.1:8b` gives noticeably more natural replies if your computer can run it.
 
 The privacy chip above the chat shows exactly what the next message will send. **Me > AI reflection > What was sent** keeps a local log of the last 30 requests and their payloads.
 

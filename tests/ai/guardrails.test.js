@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  detectCrisis, classifyScope, parseRedirect, cleanReply, limitWords, redirectText, MAX_WORDS
+  detectCrisis, classifyScope, parseRedirect, cleanReply, limitWords, redirectText, isHelpQuestion, helpText, MAX_WORDS
 } from '../../js/ai/guardrails.js';
 
 const words = t => t.split(/\s+/).filter(Boolean).length;
@@ -44,6 +44,39 @@ describe('AI guardrails: scope routing', () => {
   });
 });
 
+describe('AI guardrails: replies seen from a small local model', () => {
+  // Real replies from llama3.2 before the fix: stock redirect line, garbled token, then an answer anyway.
+  const seen = [
+    ["That's a question for your Future Self. **future**\n\nObservation: Your \"Dresser mon lit\" habit has been inactive for the last 2 days.", 'Your "Dresser mon lit" habit'],
+    ["That's a question for your Future Self. [future]\n\nObservation: You haven't checked in today.", "You haven't checked in today."],
+    ["That's a question for your Future Self. future\n\nObservation: You haven't checked in with any of your habits today.", "You haven't checked in"]
+  ];
+  for (const [raw, kept] of seen) {
+    it(`keeps the answer and removes the stock line: ${kept}`, () => {
+      const r = cleanReply(raw, 'mirror', 'What can i ask you?');
+      assert.ok(r.text.startsWith(kept), r.text);
+      assert.equal(r.redirect, null);
+      assert.equal(/question for your future self|observation:|\bfuture\b/i.test(r.text), false, r.text);
+    });
+  }
+
+  it('recognises garbled hand-off tokens', () => {
+    assert.equal(parseRedirect('REDIRECT: future', 'mirror'), 'future');
+    assert.equal(parseRedirect('[REDIRECT future]', 'mirror'), 'future');
+  });
+});
+
+describe('AI guardrails: questions about the chat', () => {
+  it('spots help questions without catching real ones', () => {
+    for (const q of ['What can i ask you?', 'What can you do?', 'Who are you?', 'hi']) assert.equal(isHelpQuestion(q), true, q);
+    for (const q of ['What can I do about tired evenings?', 'Are you okay with me skipping?']) assert.equal(isHelpQuestion(q), false, q);
+  });
+  it('describes each mode in its own voice', () => {
+    assert.ok(/data/.test(helpText('mirror')));
+    assert.ok(/becoming/.test(helpText('future')));
+  });
+});
+
 describe('AI guardrails: reply cleaning', () => {
   it('honours a redirect token only towards the other mode', () => {
     assert.equal(parseRedirect("That's a question for your Future Self. [REDIRECT:future]", 'mirror'), 'future');
@@ -52,10 +85,23 @@ describe('AI guardrails: reply cleaning', () => {
     assert.equal(parseRedirect('No token here', 'mirror'), null);
   });
 
-  it('replaces a redirected reply with the canonical notice', () => {
-    const r = cleanReply('Great question! Your values matter. [REDIRECT:future]', 'mirror');
+  it('uses the conversational hand-off text when the model only redirected', () => {
+    const r = cleanReply('Great question! [REDIRECT:future]', 'mirror', 'Give me some motivation');
     assert.equal(r.redirect, 'future');
     assert.equal(r.text, redirectText('future'));
+  });
+
+  it('keeps the answer and adds an offer when the model answers and hands off', () => {
+    const r = cleanReply('Reading happened on 3 of the last 7 days, mostly in the evening. Your Future Self could help you think about why evenings work. [REDIRECT:future]', 'mirror', 'Why do I even bother?');
+    assert.equal(r.redirect, 'future');
+    assert.ok(r.text.startsWith('Reading happened on 3 of the last 7 days'));
+    assert.equal(r.text.includes('[REDIRECT'), false);
+  });
+
+  it('drops a hand-off away from a clearly in-scope question', () => {
+    const r = cleanReply('Your streak is 3 days. [REDIRECT:future]', 'mirror', 'What is my current streak?');
+    assert.equal(r.redirect, null);
+    assert.ok(r.text.includes('streak is 3 days'));
   });
 
   it('caps replies at the word limit, ending on a sentence where possible', () => {

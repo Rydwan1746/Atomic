@@ -30,12 +30,28 @@ describe('AI pipeline: checks before any network call', () => {
     assert.equal(r.sent, null);
   });
 
-  it('redirects a clear out-of-scope question without calling the model', async () => {
-    const calls = [];
-    const r = await ask(baseState({ provider: 'ollama' }), { message: 'What is my current streak?', mode: 'future', fetchImpl: ollamaFetch('x', calls) });
+  it('offers the other mode for a clear out-of-scope question, offline', async () => {
+    const r = await ask(baseState(), { message: 'What is my current streak?', mode: 'future' });
     assert.equal(r.source, 'redirect');
     assert.equal(r.redirect, 'mirror');
-    assert.equal(calls.length, 0);
+  });
+
+  it('still lets a connected model answer, and adds the switch offer', async () => {
+    const calls = [];
+    const r = await ask(baseState({ provider: 'ollama' }), {
+      message: 'What is my current streak?', mode: 'future',
+      fetchImpl: ollamaFetch('I don\'t hold the numbers, but I know what showing up feels like for us. What would a good week look like to you?', calls)
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(r.source, 'model');
+    assert.equal(r.redirect, 'mirror');
+    assert.ok(r.text.startsWith("I don't hold the numbers"));
+  });
+
+  it('answers "what can I ask you?" offline in the mode\'s voice', async () => {
+    const r = await ask(baseState(), { message: 'What can i ask you?', mode: 'mirror' });
+    assert.equal(r.redirect, null);
+    assert.ok(/data/.test(r.text));
   });
 });
 
@@ -108,12 +124,14 @@ describe('AI pipeline: model replies', () => {
       { role: 'user', text: 'mirror q', mode: 'mirror' },
       { role: 'assistant', text: 'mirror a', mode: 'mirror', source: 'model' },
       { role: 'user', text: 'future q', mode: 'future' },
-      { role: 'assistant', text: 'offline a', mode: 'mirror', source: 'offline' }
+      { role: 'assistant', text: 'offline a', mode: 'mirror', source: 'offline' },
+      { role: 'user', text: 'old q', mode: 'mirror' },
+      { role: 'assistant', text: "That's a question for your Future Self. future", mode: 'mirror', source: 'model' }
     ];
     const calls = [];
     await ask(st, { message: 'next', mode: 'mirror', fetchImpl: ollamaFetch('ok', calls) });
     const sent = calls[0].body.messages.slice(1).map(m => m.content);
-    assert.deepEqual(sent, ['mirror q', 'mirror a', 'next']);
+    assert.deepEqual(sent, ['mirror q', 'mirror a', 'old q', 'next']);
   });
 
   it('records what was sent for the local audit log', async () => {
