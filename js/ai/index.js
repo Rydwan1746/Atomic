@@ -2,19 +2,21 @@
 //
 // Order of checks for every message:
 //   1. Acute distress  -> fixed supportive reply, persona dropped, nothing sent anywhere.
-//   2. Clear out-of-scope question for this mode -> redirect to the other mode, nothing sent.
+//   2. Scope check: a question that clearly belongs to the other mode is flagged so a "Switch to ..."
+//      offer is always shown. With a model connected, the model still answers what it can in its own lane.
 //   3. Build the mode's firewall payload and system prompt.
-//   4. Provider 'none' -> templated offline reflection (notice: 'off').
-//   5. Call the provider. Clean the reply (redirect token, word limit, Future-Self metric filter).
-//   6. Any provider failure -> templated offline reflection (notice: 'unavailable'). The app never breaks.
+//   4. Provider 'none' -> offline reply: help text, a conversational hand-off, or a templated reflection.
+//   5. Call the provider. Clean the reply (hand-off detection, word limit, Future-Self metric filter).
+//   6. Any provider failure -> offline reply with notice 'unavailable'. The app never breaks.
 import { buildSafePayload } from './firewall.js';
 import { buildSystemPrompt } from './prompts.js';
 import { TRANSPORTS, DEFAULTS, PROVIDERS, AIError } from './adapters.js';
-import { detectCrisis, classifyScope, cleanReply, redirectText, limitWords, CRISIS_TEXT, MAX_WORDS } from './guardrails.js';
+import { detectCrisis, classifyScope, cleanReply, redirectText, limitWords, isHelpQuestion, helpText, CRISIS_TEXT, MAX_WORDS } from './guardrails.js';
 
 export { PROVIDERS, DEFAULTS };
 
 const HISTORY_TURNS = 6;
+const STOCK_REDIRECT = /question for (your|the) (future self|objective mirror)/i;
 const KEY_PROVIDERS = ['gemini', 'anthropic', 'openai'];
 
 // --- Settings ---------------------------------------------------------------
@@ -91,6 +93,8 @@ export function offlineReply(payload, mode, message) {
 function historyFor(chatHistory = [], mode) {
   const turns = chatHistory
     .filter(m => m.mode === mode && (m.role === 'user' || (m.role === 'assistant' && m.source === 'model')))
+    // Replies saved before the hand-off fix repeat a stock redirect line; replaying them teaches it back.
+    .filter(m => !(m.role === 'assistant' && STOCK_REDIRECT.test(m.text)))
     .slice(-HISTORY_TURNS)
     .map(m => ({ role: m.role, content: m.text }));
   while (turns.length && turns[0].role !== 'user') turns.shift();
@@ -114,15 +118,14 @@ export async function ask(state, { message, mode = 'mirror', includeJournal = fa
   if (detectCrisis(text)) return { ...base, source: 'crisis', text: CRISIS_TEXT };
 
   const scope = classifyScope(text, mode);
-  if (scope) return { ...base, source: 'redirect', redirect: scope, text: redirectText(scope) };
-
   const payload = buildSafePayload(state, mode, { includeJournalOptIn: includeJournal });
   const settings = aiSettings(state);
   const provider = settings.provider;
+  const offline = () => scope
+    ? { source: 'redirect', redirect: scope, text: redirectText(scope) }
+    : { source: 'offline', text: isHelpQuestion(text) ? helpText(mode) : offlineReply(payload, mode, text) };
 
-  if (provider === 'none') {
-    return { ...base, source: 'offline', notice: 'off', text: offlineReply(payload, mode, text) };
-  }
+  if (provider === 'none') return { ...base, notice: 'off', ...offline() };
 
   const providerSettings = settings[provider] || {};
   const system = buildSystemPrompt(mode, payload);
@@ -132,11 +135,12 @@ export async function ask(state, { message, mode = 'mirror', includeJournal = fa
     const raw = await TRANSPORTS[provider]({
       system, messages, settings: providerSettings, apiKey: getApiKey(state, provider), fetchImpl
     });
-    const cleaned = cleanReply(raw, mode);
+    const cleaned = cleanReply(raw, mode, text);
+    const redirect = cleaned.redirect || scope;
     return {
       ...base,
-      source: cleaned.redirect ? 'redirect' : 'model',
-      redirect: cleaned.redirect,
+      source: cleaned.text === redirectText(redirect) ? 'redirect' : 'model',
+      redirect,
       text: cleaned.text,
       provider,
       model: providerSettings.model || null,
@@ -147,14 +151,13 @@ export async function ask(state, { message, mode = 'mirror', includeJournal = fa
     const configError = err instanceof AIError && err.kind === 'config';
     return {
       ...base,
-      source: 'offline',
       notice: 'unavailable',
       error: reason,
       provider,
       model: providerSettings.model || null,
       // A config error means nothing was sent; any other failure may have reached the provider.
       sent: configError ? null : { provider, model: providerSettings.model || null, payload },
-      text: offlineReply(payload, mode, text)
+      ...offline()
     };
   }
 }
