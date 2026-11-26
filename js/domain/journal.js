@@ -3,11 +3,13 @@
 // Each entry: { id, at, date, kind, habitId, text, mood, energy, private }
 
 import { id } from '../core/ids.js';
+import { today } from '../core/dates.js';
 
 export const KINDS = {
   free: 'Free write',
   completion_note: 'After a check-in',
-  miss_reason: 'After a skip'
+  miss_reason: 'After a skip',
+  weekly_review: 'Weekly review'
 };
 
 /** Add a new journal entry */
@@ -22,7 +24,8 @@ export function addEntry(state, options = {}) {
   const entry = {
     id: id('j'),
     at: new Date().toISOString(),
-    date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+    date: options.date || today(), // local YYYY-MM-DD (AD-4: never derived from UTC)
+    prompt: options.prompt || null,
     kind,
     habitId,
     text,
