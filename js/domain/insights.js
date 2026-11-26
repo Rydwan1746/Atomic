@@ -16,6 +16,29 @@ const STOPWORDS = new Set([
 ]);
 
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const MIN_BREAKS = 3;
+export const MIN_MOOD_DAYS = 10;
+
+const datesFor = (events, hid) =>
+  [...new Set(events.filter(e => e.habitId === hid && e.type === 'checkin').map(e => e.date))].sort();
+
+// Days on which a streak broke: the day after a done day that was not done, up to yesterday.
+export function streakBreaks(sortedDates, t = today()) {
+  const done = new Set(sortedDates);
+  return sortedDates.map(d => addDays(d, 1)).filter(b => !done.has(b) && b < t);
+}
+
+// date -> average of a 1 to 5 field (mood or energy) across that day's check-ins.
+export function dailyAverages(events, field) {
+  const sums = new Map();
+  for (const e of events) {
+    if (e.type !== 'checkin' || typeof e[field] !== 'number') continue;
+    const s = sums.get(e.date) || { t: 0, n: 0 };
+    s.t += e[field]; s.n++;
+    sums.set(e.date, s);
+  }
+  return new Map([...sums].map(([d, s]) => [d, s.t / s.n]));
+}
 
 /**
  * Story 2.4: 7-Day Rolling Pulse
@@ -82,11 +105,15 @@ export function evaluatePatterns(state, t = today()) {
   const totalLoggedDays = allDates.length;
 
   const coldStart = totalLoggedDays < 7;
+  const moodDays = dailyAverages(events, 'mood');
+  const maxBreaks = Math.max(0, ...habits.map(hb => streakBreaks(datesFor(events, hb.id), t).length));
   const milestones = [
-    { name: '7-Day Rolling Rhythm', daysRequired: 7, current: Math.min(7, totalLoggedDays) },
-    { name: 'Weekday Slip Analysis', daysRequired: 21, current: Math.min(21, totalLoggedDays) },
-    { name: 'Time-of-Day Clustering', daysRequired: 14, current: Math.min(14, totalLoggedDays) },
-    { name: 'Habit Co-occurrences', daysRequired: 14, current: Math.min(14, totalLoggedDays) },
+    { name: '7-Day Rolling Rhythm', unit: 'days logged', daysRequired: 7, current: Math.min(7, totalLoggedDays) },
+    { name: 'Weekday Slip Analysis', unit: 'days logged', daysRequired: 21, current: Math.min(21, totalLoggedDays) },
+    { name: 'Time-of-Day Clustering', unit: 'days logged', daysRequired: 14, current: Math.min(14, totalLoggedDays) },
+    { name: 'Habit Co-occurrences', unit: 'days logged', daysRequired: 14, current: Math.min(14, totalLoggedDays) },
+    { name: 'Streak-Break Precursors', unit: 'streak breaks', daysRequired: MIN_BREAKS, current: Math.min(MIN_BREAKS, maxBreaks) },
+    { name: 'Mood Correlates', unit: 'days with a mood', daysRequired: MIN_MOOD_DAYS, current: Math.min(MIN_MOOD_DAYS, moodDays.size) },
   ];
 
   if (coldStart) {
@@ -94,6 +121,7 @@ export function evaluatePatterns(state, t = today()) {
       coldStart: true,
       totalLoggedDays,
       milestones,
+      locked: milestones.filter(m => m.current < m.daysRequired),
       patterns: []
     };
   }
@@ -199,6 +227,40 @@ export function evaluatePatterns(state, t = today()) {
     }
   }
 
+  // --- 3. Streak-Break Precursor (>= 50% of a habit's breaks share a precursor the day before) ---
+  const energyDays = dailyAverages(events, 'energy');
+  for (const hb of habits) {
+    const breaks = streakBreaks(datesFor(events, hb.id), t);   // first missed day after a done day
+    if (breaks.length < MIN_BREAKS) continue;
+    const candidates = [
+      { key: 'low_mood', label: 'a low mood (1 or 2)', test: d => (moodDays.get(d) ?? 99) <= 2 },
+      { key: 'low_energy', label: 'low energy (1 or 2)', test: d => (energyDays.get(d) ?? 99) <= 2 },
+      ...habits.filter(o => o.id !== hb.id).map(o => {
+        const od = new Set(datesFor(events, o.id));
+        const born = (o.createdAt || '').slice(0, 10);
+        return { key: `missed_${o.id}`, label: `skipping ${o.name || o.vote}`, test: d => d >= born && !od.has(d) };
+      })
+    ];
+    let best = null;
+    for (const c of candidates) {
+      const hits = breaks.filter(b => c.test(addDays(b, -1)));
+      const ratio = hits.length / breaks.length;
+      if (ratio >= 0.5 && hits.length >= 2 && (!best || ratio > best.ratio)) best = { ...c, hits, ratio };
+    }
+    if (best) {
+      patterns.push({
+        id: `p_break_${hb.id}_${best.key}`,
+        type: 'streak_break_precursor',
+        habitId: hb.id,
+        habitName: hb.name || hb.vote,
+        unlocked: true,
+        sampleSize: { k: best.hits.length, n: breaks.length },
+        message: `${best.hits.length} of ${breaks.length} times ${hb.name || hb.vote} stopped, the day before included ${best.label}.`,
+        proof: { precursor: best.key, breaks, dates: best.hits.map(b => addDays(b, -1)), ratio: Math.round(best.ratio * 100) }
+      });
+    }
+  }
+
   // --- 4. Habit Co-occurrence (>= 25% joint completion likelihood) ---
   if (habits.length >= 2) {
     for (let i = 0; i < habits.length; i++) {
@@ -242,10 +304,39 @@ export function evaluatePatterns(state, t = today()) {
     }
   }
 
+  // --- 5. Mood Correlates (>= 10 days with a mood; >= 0.5 point gap on the 1 to 5 scale) ---
+  if (moodDays.size >= MIN_MOOD_DAYS) {
+    for (const hb of habits) {
+      const done = new Set(datesFor(events, hb.id));
+      const born = (hb.createdAt || '').slice(0, 10);
+      const withH = [], withoutH = [];
+      for (const [d, m] of moodDays) {
+        if (d < born) continue;
+        (done.has(d) ? withH : withoutH).push(m);
+      }
+      if (withH.length < 3 || withoutH.length < 3) continue;
+      const avg = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
+      const a = avg(withH), b = avg(withoutH);
+      if (Math.abs(a - b) < 0.5) continue;
+      patterns.push({
+        id: `p_mood_${hb.id}`,
+        type: 'mood_correlate',
+        habitId: hb.id,
+        habitName: hb.name || hb.vote,
+        unlocked: true,
+        sampleSize: { k: withH.length, n: withH.length + withoutH.length },
+        message: `On days with ${hb.name || hb.vote}, your recorded mood averages ${a.toFixed(1)}, against ${b.toFixed(1)} on days without it. This is a correlation, not a cause.`,
+        proof: { withHabit: Number(a.toFixed(2)), withoutHabit: Number(b.toFixed(2)), daysWith: withH.length, daysWithout: withoutH.length,
+          dates: [...moodDays.keys()].filter(d => d >= born).sort() }
+      });
+    }
+  }
+
   return {
     coldStart: false,
     totalLoggedDays,
     milestones,
+    locked: milestones.filter(m => m.current < m.daysRequired),
     patterns
   };
 }
