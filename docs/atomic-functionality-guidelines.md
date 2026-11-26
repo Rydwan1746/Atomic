@@ -280,6 +280,7 @@ Numbering is stable. Reference these numbers in commits and tasks.
 **S19. Delivery (build in this order).**
 1. **.ics export (DEFAULT, build first):** one file with one `VEVENT` per reminder-enabled habit. Each has a daily `RRULE:FREQ=DAILY`, `DTSTART` at the intention time in the user's timezone (`Intl.DateTimeFormat().resolvedOptions().timeZone`, written as `TZID`), a 10-minute duration, `SUMMARY` set to the reminder text, and a `VALARM` with `TRIGGER:PT0M` and `ACTION:DISPLAY`. Escape commas, semicolons, and newlines per RFC 5545. Download as `atomic-reminders.ics`. Re-exporting after changes needs the user to re-import; tell them.
 2. **In-tab reminders:** `Notification` API plus a timer while the tab is open. Ask for permission only after the user turns on a reminder. Label this as "works only while Atomic is open".
+   - *Built (2026-11-26):* steps 1 and 2 are done. Following PRD FR-24, the `.ics` file includes every active habit with an intention time (not only those with the in-tab reminder switched on); the in-tab reminder is a separate per-habit switch in Edit habit.
 3. **PWA with service worker:** manifest, offline cache, installable. Background push needs a push service and a server, so it is deferred to S20.
 4. **Personal push (OPEN):** a Telegram bot or ntfy topic for the owner's own phone. Acceptable because the app is personal; revisit before multi-user.
 

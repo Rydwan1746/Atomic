@@ -1,6 +1,25 @@
 import * as S from '../core/storage.js';
 import * as INS from '../domain/insights.js';
-import { h, catVars } from './components.js';
+import { h, catVars, announce } from './components.js';
+import { reviewStatus, buildReview, completeReview } from '../domain/weekly-review.js';
+
+const PATTERN_LABELS = {
+  weekday_slip: 'Weekday slip', time_of_day_cluster: 'Time of day', co_occurrence: 'Habits together',
+  streak_break_precursor: 'Before a streak breaks', mood_correlate: 'Mood'
+};
+
+function progressList(items) {
+  return h('div', { style: 'display:flex;flex-direction:column;gap:12px;margin-top:8px' },
+    items.map(m => {
+      const pct = Math.round((m.current / m.daysRequired) * 100);
+      return h('div', {},
+        h('div', { style: 'display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px' },
+          h('span', {}, m.name),
+          h('span', { class: 'sub' }, `${m.current} / ${m.daysRequired} ${m.unit || 'days'}`)),
+        h('div', { class: 'progress', role: 'progressbar', 'aria-valuenow': String(pct), 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-label': m.name },
+          h('div', { style: `width:${pct}%` })));
+    }));
+}
 
 let expandedProofs = new Set();
 let reviewModalOpen = false;
@@ -12,7 +31,7 @@ export function render(el) {
   const pulse = INS.getRollingPulse(st);
   const patternsData = INS.evaluatePatterns(st);
   const themesData = INS.getRecurringThemes(st);
-  const weeklyReview = INS.getWeeklyReview(st);
+  const review = reviewStatus(st);
 
   // 1. 7-Day Rolling Pulse Card
   const pulseCard = h('article', { class: 'card', style: 'border-left: 4px solid var(--accent-future)' },
@@ -45,20 +64,7 @@ export function render(el) {
       h('div', { class: 'pill' }, 'Curtain Rising · Learning Your Rhythms'),
       h('h3', { class: 'voice' }, 'Patterns unlock as you log more days.'),
       h('p', { class: 'sub' }, `Logged ${patternsData.totalLoggedDays} of 7 days needed for first observations.`),
-      h('div', { style: 'display:flex;flex-direction:column;gap:12px;margin-top:8px' },
-        patternsData.milestones.map(m => {
-          const pct = Math.round((m.current / m.daysRequired) * 100);
-          return h('div', {},
-            h('div', { style: 'display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px' },
-              h('span', {}, m.name),
-              h('span', { class: 'sub' }, `${m.current} / ${m.daysRequired} days`)
-            ),
-            h('div', { style: 'height:6px;background:var(--grid-empty);border-radius:3px;overflow:hidden' },
-              h('div', { style: `height:100%;width:${pct}%;background:var(--accent-future);border-radius:3px` })
-            )
-          );
-        })
-      )
+      progressList(patternsData.milestones)
     );
   } else {
     patternsSection = h('section', { style: 'display:flex;flex-direction:column;gap:12px' },
@@ -66,7 +72,7 @@ export function render(el) {
       patternsData.patterns.length ? patternsData.patterns.map(p => {
         const isExpanded = expandedProofs.has(p.id);
         return h('article', { class: 'card' },
-          h('div', { class: 'pill' }, p.type.replace('_', ' ').toUpperCase()),
+          h('div', { class: 'pill' }, PATTERN_LABELS[p.type] || p.type),
           h('p', { style: 'font-size:16px;font-weight:500' }, p.message),
           h('div', { class: 'acts' },
             h('button', {
@@ -92,7 +98,11 @@ export function render(el) {
             p.proof.dates && p.proof.dates.length ? h('div', { class: 'sub' }, `Exact dates: ${p.proof.dates.join(', ')}`) : null
           )
         );
-      }) : h('div', { class: 'empty' }, 'No strong slips or clusters detected yet. Keep voting consistently!')
+      }) : h('div', { class: 'empty' }, 'Nothing stands out yet. Patterns appear here when the data shows something clear.'),
+      patternsData.locked?.length ? h('section', { class: 'card' },
+        h('div', { class: 'pill' }, 'Still learning'),
+        h('p', { class: 'sub' }, 'These patterns unlock as more data comes in.'),
+        progressList(patternsData.locked)) : null
     );
   }
 
@@ -111,18 +121,23 @@ export function render(el) {
     )
   );
 
-  // 4. Weekly Review Protocol Bridge Card
+  // 4. Weekly Review (FR-17): opens Sunday 18:00, needs 3 days of activity, once per week.
+  const when = d => d.toLocaleString(undefined, { weekday: 'long', hour: '2-digit', minute: '2-digit' });
   const weeklyReviewCard = h('article', { class: 'card prompt' },
-    h('div', { class: 'pill' }, 'Sunday Weekly Review Protocol'),
-    h('h3', { class: 'voice', style: 'font-size:18px' }, 'Synthesize your week.'),
-    h('p', {}, weeklyReview.reflectionPrompt),
-    h('div', { class: 'acts' },
-      h('button', {
-        class: 'btn primary',
-        type: 'button',
-        onclick: () => { openWeeklyReviewModal(weeklyReview, st, redraw); }
-      }, 'Run Weekly Review')
-    )
+    h('div', { class: 'pill' }, 'Weekly review'),
+    review.status === 'locked' ? [
+      h('h3', { class: 'voice', style: 'font-size:18px' }, 'Your first review is on its way.'),
+      h('p', {}, `It opens once you have ${review.needed} days of check-ins. You have ${review.activeDays} so far.`)
+    ] : review.status === 'done' ? [
+      h('h3', { class: 'voice', style: 'font-size:18px' }, 'This week is reviewed.'),
+      review.completed.intention && h('p', {}, `Your intention: ${review.completed.intention}`),
+      h('p', { class: 'sub' }, `The next review opens ${when(review.window.nextOpensAt)}.`)
+    ] : [
+      h('h3', { class: 'voice', style: 'font-size:18px' }, 'Your week is ready to look back on.'),
+      h('p', { class: 'sub' }, `Four short steps. Open until ${when(review.window.nextOpensAt)}.`),
+      h('div', { class: 'acts' },
+        h('button', { class: 'btn primary', type: 'button', onclick: () => openWeeklyReview(st, redraw) }, 'Start weekly review'))
+    ]
   );
 
   el.replaceChildren(...[
@@ -134,52 +149,34 @@ export function render(el) {
   ]);
 }
 
-function openWeeklyReviewModal(review, st, redraw) {
-  const modal = document.createElement('div');
-  modal.className = 'dlg';
+function openWeeklyReview(st, redraw) {
+  const r = buildReview(st);
+  const dlg = h('dialog', { class: 'dlg dlg-wide', 'aria-labelledby': 'review-title' });
+  const reflection = h('textarea', { class: 'ruled', style: 'min-height:112px', 'aria-label': r.reflectionPrompt, placeholder: 'A few lines, if you like.' });
+  const intention = h('input', { 'aria-label': 'One intention for the week ahead', placeholder: 'e.g. Read before I pick up my phone', autocomplete: 'off' });
+  const step = (n, title, ...body) => h('section', { class: 'review-step' }, h('div', { class: 'pill' }, `Step ${n} of 4`), h('h3', { class: 'voice' }, title), ...body);
 
-  const ta = h('textarea', { placeholder: 'Write your weekly synthesis and open intention...' });
-  const saveBtn = h('button', {
-    class: 'btn primary',
-    type: 'button',
-    onclick: () => {
-      const text = ta.value.trim();
-      if (text) {
-        st.journal.push({
-          id: `j_${Date.now()}`,
-          at: new Date().toISOString(),
-          date: new Date().toISOString().slice(0, 10),
-          kind: 'free',
-          habitId: null,
-          prompt: review.reflectionPrompt,
-          text,
-          mood: null,
-          energy: null,
-          private: false
-        });
-        S.save(st);
-      }
-      if (modal.parentNode) modal.parentNode.removeChild(modal);
-      redraw();
-    }
-  }, 'Save to Journal');
-
-  const cancelBtn = h('button', {
-    class: 'btn',
-    type: 'button',
-    onclick: () => { if (modal.parentNode) modal.parentNode.removeChild(modal); }
-  }, 'Close');
-
-  modal.appendChild(h('h2', {}, 'Weekly Review Synthesis'));
-  modal.appendChild(h('p', { class: 'sub' }, review.reflectionPrompt));
-  if (review.topIdentity) {
-    modal.appendChild(h('p', { style: 'font-size:14px' },
-      `Leading identity: ${review.topIdentity.identity} (${review.topIdentity.votes} votes)`
-    ));
-  }
-  modal.appendChild(ta);
-  modal.appendChild(h('div', { class: 'acts', style: 'margin-top:14px;justify-content:flex-end' }, saveBtn, cancelBtn));
-
-  document.body.appendChild(modal);
+  dlg.append(
+    h('h2', { id: 'review-title' }, 'Weekly review'),
+    step(1, r.steps[0].title,
+      h('p', {}, r.topIdentity
+        ? `${r.totalWeeklyVotes} ${r.totalWeeklyVotes === 1 ? 'vote' : 'votes'} in the last 7 days. Most of them for ${r.topIdentity.identity}.`
+        : 'No votes in the last 7 days. That is information too, not a verdict.'),
+      r.habits.length ? h('ul', { class: 'review-list' }, r.habits.map(x => h('li', {}, `${x.name}: ${x.consistency}% of days over the last 30`))) : null),
+    step(2, r.steps[1].title,
+      h('p', {}, r.strongestPattern ? r.strongestPattern.message : 'No clear pattern yet. Keep logging and the Mirror will have more to show.')),
+    step(3, r.steps[2].title, h('p', { class: 'voice' }, r.reflectionPrompt), reflection),
+    step(4, r.steps[3].title, intention),
+    h('div', { class: 'acts', style: 'margin-top:14px;justify-content:flex-end' },
+      h('button', { class: 'btn', type: 'button', onclick: () => dlg.close() }, 'Not now'),
+      h('button', { class: 'btn primary', type: 'button', onclick: () => {
+        S.save(completeReview(S.load(), { reflection: reflection.value, intention: intention.value, prompt: r.reflectionPrompt }));
+        announce('Weekly review saved to your journal');
+        dlg.close();
+        redraw();
+      } }, 'Finish and save to Journal'))
+  );
+  dlg.addEventListener('close', () => dlg.remove());
+  document.body.appendChild(dlg);
+  dlg.showModal();
 }
-

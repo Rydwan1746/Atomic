@@ -9,7 +9,8 @@
 --cat-health:#4F8A5B;--cat-health-strong:#3D7349;--cat-learning:#3B6EA5;--cat-learning-strong:#3B6EA5;
 --cat-creativity:#9B5BB5;--cat-creativity-strong:#9B5BB5;--cat-mindfulness:#C7893F;--cat-mindfulness-strong:#9A6420;
 --cat-connection:#C75F6A;--cat-connection-strong:#B04A56;--on-category:#FFFFFF;
---overlay-scrim:rgba(31,41,55,.4);--shadow:0 1px 2px rgba(0,0,0,.05)}
+--overlay-scrim:rgba(31,41,55,.4);--shadow:0 1px 2px rgba(0,0,0,.05);
+--ruled-line-paper:rgba(180,150,120,.32);--ruled-line-night:rgba(255,255,255,.09);--ruled-line:var(--ruled-line-paper);--notebook-bg:#FFFDF8}
 :root[data-theme="night"]{
 --bg-page:#151A24;--bg-card:#1D2431;--bg-raised:#252D3C;--border:#2E3748;
 --text-primary:#E9E6DF;--text-secondary:#A7AEBD;--text-muted:#8A93A8;
@@ -19,7 +20,8 @@
 --cat-health:#6FA77C;--cat-health-strong:#6FA77C;--cat-learning:#7FA1CC;--cat-learning-strong:#7FA1CC;
 --cat-creativity:#B58BCB;--cat-creativity-strong:#B58BCB;--cat-mindfulness:#D4A15C;--cat-mindfulness-strong:#D4A15C;
 --cat-connection:#D98A93;--cat-connection-strong:#D98A93;--on-category:#151A24;
---overlay-scrim:rgba(0,0,0,.55);--shadow:none}
+--overlay-scrim:rgba(0,0,0,.55);--shadow:none;
+--ruled-line:var(--ruled-line-night);--notebook-bg:#1B2230}
 *{box-sizing:border-box;margin:0}
 body{font:16px/1.5 var(--font-ui);background:var(--bg-page);color:var(--text-primary);padding:28px 20px calc(88px + env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased}
 main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
@@ -61,7 +63,6 @@ textarea{font:17px/1.65 var(--font-voice);min-height:140px;resize:vertical}
 .prompt{background:var(--insight-bg);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
 .prompt p{font:17px/1.4 var(--font-voice);color:var(--insight-text)}
 .chip{display:inline-block;font-size:12px;border:1px solid var(--border);border-radius:9999px;padding:2px 10px;color:var(--text-secondary)}
-.entry p{font:17px/1.65 var(--font-voice);white-space:pre-wrap}
 .entry label{flex-direction:row;font-weight:400;font-size:13px;align-items:center;color:var(--text-secondary)}
 details.more summary{font-size:13px;color:var(--text-secondary);cursor:pointer;min-height:24px}
 .dlg{border:1px solid var(--border);border-radius:12px;padding:20px;max-width:440px;width:90%;background:var(--bg-card);color:var(--text-primary);margin:auto}
@@ -113,3 +114,28 @@ button.chip[aria-pressed=true]{background:var(--action-bg);color:var(--action-te
 .payload-pre{background:var(--bg-raised);padding:12px;border-radius:8px;font-size:12px;overflow:auto;max-height:300px;white-space:pre-wrap;word-break:break-word}
 .ai-log{display:flex;flex-direction:column;gap:6px;font-size:13px}
 .ai-log details{background:var(--bg-raised);border-radius:8px;padding:8px 10px}
+
+/* FR-9b: ruled notebook pages. 17px text on a 28px line grid; the rule sits just under the baseline.
+   background-origin: content-box keeps the rules aligned with the text lines whatever the padding. */
+.ruled{font:17px/28px var(--font-voice);color:var(--text-primary);
+  background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 23px,var(--ruled-line) 23px,var(--ruled-line) 24px,transparent 24px,transparent 28px);
+  background-origin:content-box;background-attachment:local}
+textarea.ruled{display:block;width:100%;min-height:340px;padding:0 4px;border:0;border-radius:0;background-color:transparent;resize:none;overflow:hidden}
+textarea.ruled:focus-visible{outline:none}
+.notebook{background:var(--notebook-bg);border:1px solid var(--border);border-radius:12px;padding:20px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px}
+.notebook:focus-within{border-color:var(--accent-future)}
+.notebook-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.notebook-prompt{font-size:20px;line-height:28px;color:var(--text-primary)}
+@media(min-width:900px){.notebook{padding:28px 32px}}
+.entry .ruled{white-space:pre-wrap;padding:0 4px;min-height:56px}
+.entry-prompt{font-size:15px;color:var(--text-secondary)}
+.dlg-wide{max-width:640px}
+.dlg textarea.ruled{min-height:224px;margin-top:10px}
+.progress{height:6px;background:var(--grid-empty);border-radius:3px;overflow:hidden}
+.progress>div{height:100%;background:var(--accent-future);border-radius:3px}
+.review-step{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid var(--border)}
+.review-step h3{font-size:18px;font-weight:400}
+.review-list{margin:0;padding-left:20px;font-size:14px;color:var(--text-secondary)}
+.lock{max-width:420px;margin:10vh auto 0}
+.sub-form{display:flex;flex-direction:column;gap:10px}
+label.btn{flex-direction:row;align-items:center;justify-content:center;font:600 15px var(--font-ui)}

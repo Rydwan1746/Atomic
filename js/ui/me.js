@@ -3,15 +3,21 @@ import { h, announce } from './components.js';
 import { applyTheme } from './theme.js';
 import * as AE from '../domain/alter-ego.js';
 import * as WOOP from '../domain/woop.js';
-import { generateIcs } from '../domain/reminders.js';
+import { generateIcs, icsHabitCount } from '../domain/reminders.js';
 import { encryptState, decryptState, isEncrypted } from '../core/crypto.js';
 import { aiSettingsCard } from './ai-settings.js';
+import { protectionSection } from './protection.js';
+import { downloadBackup, persistenceStatus, requestPersistence } from './backup.js';
 
 let simulatorOutput = null;
+let tab = 'you';   // 'you' | 'ai' | 'data'
+const TABS = { you: 'You', ai: 'AI', data: 'Data & privacy' };
 
 export function render(el) {
   const st = S.load();
   const redraw = () => render(el);
+  const q = (location.hash.split('?')[1] || '');
+  if (TABS[q]) { tab = q; history.replaceState(null, '', '#/me'); }
 
   // --- ZONE 1: Identity Architecture & Portfolio ---
   const portfolio = AE.getIdentityPortfolio(st);
@@ -21,9 +27,9 @@ export function render(el) {
 
   // 1. Identity Portfolio Section
   const portfolioSection = h('section', { class: 'card' },
-    h('div', { class: 'pill' }, 'Zone 1 · Identity Portfolio'),
-    h('h2', { class: 'voice', style: 'font-size:22px;margin:2px 0' }, 'Who You Are Becoming'),
-    h('p', { class: 'sub' }, 'Every check-in is an empirical vote cast for an identity.'),
+    h('div', { class: 'pill' }, 'Your identities'),
+    h('h2', { class: 'voice', style: 'font-size:22px;margin:2px 0' }, 'Who you are becoming'),
+    h('p', { class: 'sub' }, 'Every check-in is a vote for one of these.'),
     portfolio.length ? h('div', { style: 'display:flex;flex-direction:column;gap:10px;margin-top:8px' },
       portfolio.map(item => h('div', {
         class: 'item',
@@ -38,7 +44,7 @@ export function render(el) {
           h('div', { class: 'sub', style: 'font-size:12px' }, `${item.consistencyPct}% 30d`)
         )
       ))
-    ) : h('div', { class: 'empty' }, 'No active identities yet. Add your first habit on Today!')
+    ) : h('div', { class: 'empty' }, 'No identities yet. Add your first habit on Today.')
   );
 
   // 2. Alter Ego Profile Authoring Card
@@ -49,8 +55,8 @@ export function render(el) {
   let aeBehaviors = (alterEgo.behaviors || []).join('\n');
 
   const alterEgoCard = h('section', { class: 'card', style: 'border:1px solid var(--accent-future)' },
-    h('div', { class: 'pill' }, 'Alter Ego Archetype Authoring'),
-    h('h3', { class: 'voice' }, 'Define Your Future Self'),
+    h('div', { class: 'pill' }, 'Your future self'),
+    h('h3', { class: 'voice' }, 'Describe who you are becoming'),
     h('p', { class: 'sub' }, 'A description and 3 behaviors unlock Future-Self chat. Scenario simulation works with any profile.'),
     h('form', {
       onsubmit: e => {
@@ -105,7 +111,7 @@ export function render(el) {
         })
       ),
       h('div', { class: 'acts', style: 'margin-top:10px' },
-        h('button', { class: 'btn primary', type: 'submit' }, 'Save Alter Ego Profile')
+        h('button', { class: 'btn primary', type: 'submit' }, 'Save')
       )
     )
   );
@@ -113,8 +119,8 @@ export function render(el) {
   // 3. WOOP Planner Card
   let wWish = '', wOutcome = '', wObstacle = '', wPlan = '', wHabitId = '';
   const woopCard = h('section', { class: 'card' },
-    h('div', { class: 'pill' }, 'WOOP Obstacle Planner'),
-    h('h3', { class: 'voice' }, 'Wish · Outcome · Obstacle · Plan'),
+    h('div', { class: 'pill' }, 'Plans for obstacles (WOOP)'),
+    h('h3', { class: 'voice' }, 'Wish, outcome, obstacle, plan'),
     h('form', {
       onsubmit: e => {
         e.preventDefault();
@@ -132,30 +138,30 @@ export function render(el) {
         redraw();
       }
     },
-      h('label', {}, 'Wish (What do you want to achieve?)',
+      h('label', {}, 'Wish: what do you want?',
         h('input', { required: true, placeholder: 'e.g. Daily morning reading', oninput: e => { wWish = e.target.value; } })
       ),
-      h('label', {}, 'Outcome (What is the best feeling or result?)',
+      h('label', {}, 'Outcome: what would it feel like?',
         h('input', { placeholder: 'e.g. Expansive knowledge and calm morning', oninput: e => { wOutcome = e.target.value; } })
       ),
-      h('label', {}, 'Obstacle (What internal friction arises?)',
+      h('label', {}, 'Obstacle: what usually gets in the way?',
         h('input', { placeholder: 'e.g. Scrolling social media on waking', oninput: e => { wObstacle = e.target.value; } })
       ),
-      h('label', {}, 'Plan (Canonical: "If [obstacle], then I will [action]")',
+      h('label', {}, 'Plan: "If [obstacle], then I will [action]"',
         h('input', { required: true, placeholder: 'If I reach for phone, then I will open my book', oninput: e => { wPlan = e.target.value; } })
       ),
-      h('label', {}, 'Link to Active Habit (optional hint trigger)',
+      h('label', {}, 'Show it on a habit (optional)',
         h('select', { onchange: e => { wHabitId = e.target.value; } },
-          h('option', { value: '' }, '— No linked habit —'),
+          h('option', { value: '' }, 'No habit'),
           habits.map(habit => h('option', { value: habit.id }, habit.name || habit.vote))
         )
       ),
       h('div', { class: 'acts', style: 'margin-top:10px' },
-        h('button', { class: 'btn primary', type: 'submit' }, 'Create WOOP Plan')
+        h('button', { class: 'btn primary', type: 'submit' }, 'Save plan')
       )
     ),
     woopList.length ? h('div', { style: 'display:flex;flex-direction:column;gap:8px;margin-top:14px' },
-      h('strong', {}, 'Active WOOP Plans:'),
+      h('strong', {}, 'Your plans'),
       woopList.map(item => h('div', {
         class: 'scorecard-row',
         style: 'padding:10px 14px'
@@ -181,9 +187,9 @@ export function render(el) {
   // 4. Offline Scenario Simulator
   let simText = '';
   const simulatorCard = h('section', { class: 'card prompt' },
-    h('div', { class: 'pill' }, 'Offline Scenario Simulator'),
-    h('h3', { class: 'voice' }, 'Simulate a Tough Moment'),
-    h('p', { class: 'sub' }, 'Deterministic reflection grounded in your Alter Ego values without cloud dependencies.'),
+    h('div', { class: 'pill' }, 'Practice a hard moment'),
+    h('h3', { class: 'voice' }, 'What would your future self do?'),
+    h('p', { class: 'sub' }, 'A reflection built only from your future self\'s values and behaviors. Works offline.'),
     h('textarea', {
       rows: 2,
       placeholder: 'Describe a temptation or friction right now (e.g. Feeling drained and wanting to skip today)...',
@@ -198,38 +204,46 @@ export function render(el) {
           simulatorOutput = sim.prompt;
           redraw();
         }
-      }, 'Simulate Response')
+      }, 'Reflect')
     ),
     simulatorOutput ? h('div', {
       style: 'background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:10px;white-space:pre-wrap;font-family:var(--font-voice);line-height:1.6'
     },
       simulatorOutput,
       h('div', { class: 'acts', style: 'margin-top:10px' },
-        h('a', { class: 'btn primary', href: '#/journal', style: 'text-decoration:none' }, 'Take into Journal →')
+        h('a', { class: 'btn primary', href: '#/journal', style: 'text-decoration:none' }, 'Write about it in Journal →')
       )
     ) : null
   );
 
-  // --- ZONE 2: Sovereignty, Data & Privacy ---
+  // --- Data & privacy ---
   const lastBackupStr = st.settings.lastBackupAt
-    ? `Last backup: ${Math.max(0, Math.round((Date.now() - new Date(st.settings.lastBackupAt).getTime()) / (1000 * 60 * 60 * 24)))} days ago`
+    ? `Last backup: ${Math.max(0, Math.round((Date.now() - new Date(st.settings.lastBackupAt).getTime()) / 864e5))} days ago`
     : 'No backup downloaded yet';
 
-  const sovereigntySection = h('section', { class: 'card' },
-    h('div', { class: 'pill' }, 'Zone 2 · Data Sovereignty & Vault'),
-    h('h2', { class: 'voice', style: 'font-size:22px;margin:2px 0' }, 'Client-Side Sovereignty'),
-    h('p', { class: 'sub' }, '100% stored on this device. Zero developer-operated backend.'),
+  const storageLine = h('p', { class: 'sub' }, 'Checking whether this browser will keep your data…');
+  persistenceStatus().then(status => {
+    storageLine.replaceChildren(...({
+      granted: ['This browser has agreed to keep Atomic\'s data. Backups still protect you if the device is lost.'],
+      denied: ['This browser may clear Atomic\'s data when space is low or after a long time without a visit. ',
+        h('button', { class: 'ghost-link', type: 'button', onclick: async () => { await requestPersistence(); redraw(); } }, 'Ask it to keep my data')],
+      unsupported: ['This browser cannot promise to keep site data, so regular backups are your safety net.']
+    })[status]);
+  });
 
-    // Appearance
-    h('strong', { style: 'margin-top:8px' }, 'Appearance'),
+  const settingsCard = h('section', { class: 'card' },
+    h('div', { class: 'pill' }, 'Settings'),
+    h('strong', {}, 'Appearance'),
     h('label', {}, 'Theme',
       h('select', { onchange: e => { st.settings.theme = e.target.value; S.save(st); applyTheme(); } },
         ['auto', 'paper', 'night'].map(v => h('option', { value: v, selected: st.settings.theme === v }, v))
       )
     ),
 
-    // Calendar Export
-    h('strong', { style: 'margin-top:8px' }, 'Calendar Reminders (RFC 5545)'),
+    h('strong', { style: 'margin-top:8px' }, 'Calendar reminders'),
+    h('p', { class: 'sub' }, icsHabitCount(st)
+      ? `A daily calendar event for ${icsHabitCount(st) === 1 ? 'your 1 habit' : `each of your ${icsHabitCount(st)} habits`} with an intention time. These remind you even when Atomic is closed. After changing a habit, download and import the file again.`
+      : 'Give a habit an intention time (Edit habit) to export it as a daily calendar reminder.'),
     h('div', { class: 'acts' },
       h('button', {
         class: 'btn',
@@ -244,76 +258,28 @@ export function render(el) {
       }, 'Download atomic-reminders.ics')
     ),
 
-    // Zero-Knowledge Passphrase Vault
-    h('strong', { style: 'margin-top:8px' }, 'Zero-Knowledge Passphrase Vault (PBKDF2 / AES-256-GCM)'),
-    h('p', { class: 'sub' }, 'Encrypts the full state using 600,000 iterations of PBKDF2. Keys strictly ephemeral.'),
-    h('div', { class: 'acts' },
-      h('button', {
-        class: 'btn',
-        type: 'button',
-        onclick: async () => {
-          const pass = prompt('Enter a secure passphrase to encrypt your state:');
-          if (!pass) return;
-          try {
-            const encrypted = await encryptState(st, pass);
-            const blob = new Blob([encrypted], { type: 'text/plain' });
-            const a = h('a', { href: URL.createObjectURL(blob), download: `atomic-vault-encrypted-${new Date().toISOString().slice(0, 10)}.bin` });
-            a.click();
-            alert('Encrypted vault exported successfully! Keep your passphrase safe; no recovery is possible without it.');
-          } catch (err) {
-            alert('Encryption failed: ' + err.message);
-          }
-        }
-      }, 'Export Encrypted Vault Backup'),
-      h('label', { class: 'btn', style: 'display:inline-flex;align-items:center;cursor:pointer' },
-        'Restore Encrypted Vault',
-        h('input', {
-          type: 'file',
-          class: 'sr',
-          onchange: async e => {
-            try {
-              const file = e.target.files[0];
-              if (!file) return;
-              const text = await file.text();
-              if (!isEncrypted(text)) {
-                alert('File is not an atomic:vault:v1 encrypted container.');
-                return;
-              }
-              const pass = prompt('Enter the passphrase for this vault:');
-              if (!pass) return;
-              const decryptedState = await decryptState(text, pass);
-              S.save(decryptedState);
-              alert('Vault restored successfully!');
-              location.reload();
-            } catch (err) {
-              alert('Decryption failed: ' + err.message);
-            }
-          }
-        })
-      )
-    ),
+  );
 
-    // Standard Backup & Restore
-    h('strong', { style: 'margin-top:8px' }, 'JSON Backup & Restore'),
-    h('span', { class: 'chip' }, lastBackupStr),
+  const privacyCard = h('section', { class: 'card' },
+    h('div', { class: 'pill' }, 'Privacy'),
+    h('p', { class: 'sub' }, 'Everything stays on this device. Atomic has no server and no account.'),
+    ...protectionSection(redraw).map((x, i) => (i === 0 ? h('strong', {}, 'Passphrase protection') : x))
+  );
+
+  const backupCard = h('section', { class: 'card' },
+    h('div', { class: 'pill' }, 'Backups'),
+    storageLine,
+    h('span', { class: 'chip', style: 'align-self:flex-start' }, lastBackupStr),
+    h('strong', {}, 'Backup file'),
+    h('p', { class: 'sub' }, 'A copy of everything as a JSON file. Use it to move to another browser or device. Not encrypted.'),
     h('div', { class: 'acts' },
       h('button', {
         class: 'btn',
         type: 'button',
-        onclick: () => {
-          const a = h('a', {
-            href: URL.createObjectURL(new Blob([S.exportJSON()], { type: 'application/json' })),
-            download: `atomic-backup-${new Date().toISOString().slice(0, 10)}.json`
-          });
-          a.click();
-          st.settings.lastBackupAt = new Date().toISOString();
-          S.save(st);
-          announce('Backup downloaded');
-          redraw();
-        }
-      }, 'Export JSON backup'),
+        onclick: () => { downloadBackup(); redraw(); }
+      }, 'Download backup'),
       h('label', { class: 'btn', style: 'display:inline-flex;align-items:center;cursor:pointer' },
-        'Import JSON backup',
+        'Restore from backup',
         h('input', {
           type: 'file',
           accept: 'application/json',
@@ -324,6 +290,7 @@ export function render(el) {
               const j = JSON.parse(text);
               if (confirm(`Replace current data with ${j.habits?.length ?? 0} habits, ${j.events?.length ?? 0} check-ins, ${j.journal?.length ?? 0} entries?`)) {
                 S.importJSON(text);
+                await S.flush();
                 location.reload();
               }
             } catch (err) { alert(err.message); }
@@ -332,28 +299,85 @@ export function render(el) {
       )
     ),
 
-    // Deliberate Two-Stage Deletion
-    h('strong', { style: 'margin-top:8px;color:#B04A56' }, 'Danger Zone'),
+    h('strong', { style: 'margin-top:8px' }, 'Encrypted backup file'),
+    h('p', { class: 'sub' }, 'A backup file protected by its own passphrase, safe to keep in cloud storage or email to yourself.'),
+    h('div', { class: 'acts' },
+      h('button', {
+        class: 'btn',
+        type: 'button',
+        onclick: async () => {
+          const pass = prompt('Choose a passphrase for this backup file:');
+          if (!pass) return;
+          try {
+            const encrypted = await encryptState(st, pass);
+            const blob = new Blob([encrypted], { type: 'text/plain' });
+            const a = h('a', { href: URL.createObjectURL(blob), download: `atomic-backup-encrypted-${new Date().toLocaleDateString('en-CA')}.bin` });
+            a.click();
+            alert('Encrypted backup downloaded. Keep its passphrase safe: the file cannot be opened without it.');
+          } catch (err) {
+            alert('Encryption failed: ' + err.message);
+          }
+        }
+      }, 'Export encrypted backup'),
+      h('label', { class: 'btn', style: 'display:inline-flex;align-items:center;cursor:pointer' },
+        'Restore encrypted backup',
+        h('input', {
+          type: 'file',
+          class: 'sr',
+          onchange: async e => {
+            try {
+              const file = e.target.files[0];
+              if (!file) return;
+              const text = await file.text();
+              if (!isEncrypted(text)) {
+                alert('This file is not an Atomic encrypted backup.');
+                return;
+              }
+              const pass = prompt('Passphrase for this backup file:');
+              if (!pass) return;
+              const decryptedState = await decryptState(text, pass);
+              S.importJSON(JSON.stringify(decryptedState));
+              await S.flush();
+              alert('Backup restored.');
+              location.reload();
+            } catch (err) {
+              alert('Decryption failed: ' + err.message);
+            }
+          }
+        })
+      )
+    ),
+
+  );
+
+  const deleteCard = h('section', { class: 'card' },
+    h('div', { class: 'pill' }, 'Delete everything'),
+    h('p', { class: 'sub' }, 'Erases all habits, check-ins, journal entries and settings on this device. This cannot be undone, so download a backup first if you might want it back.'),
     h('button', {
       class: 'btn',
       type: 'button',
-      style: 'align-self:flex-start;color:#B04A56;border-color:#B04A56',
+      style: 'align-self:flex-start',
       onclick: () => {
         if (prompt('Type DELETE to erase all data on this device.') === 'DELETE') {
           S.wipe();
           location.reload();
         }
       }
-    }, 'Delete all data (Type DELETE)')
+    }, 'Delete all data')
   );
 
-  el.replaceChildren(...[
-    h('h1', { class: 'greet' }, 'Me: Identity & Sovereignty'),
-    portfolioSection,
-    alterEgoCard,
-    woopCard,
-    simulatorCard,
-    aiSettingsCard(st, redraw),
-    sovereigntySection
-  ]);
+  const tabs = h('div', { class: 'switcher', role: 'tablist', 'aria-label': 'Me sections' },
+    Object.entries(TABS).map(([k, label]) => h('button', {
+      type: 'button', role: 'tab', 'aria-selected': String(tab === k),
+      class: 'switcher-tab ' + (tab === k ? 'active' : 'inactive'),
+      onclick: () => { tab = k; redraw(); }
+    }, label)));
+
+  const sections = {
+    you: [portfolioSection, alterEgoCard, woopCard, simulatorCard],
+    ai: [aiSettingsCard(st, redraw)],
+    data: [settingsCard, privacyCard, backupCard, deleteCard]
+  };
+
+  el.replaceChildren(h('h1', { class: 'greet' }, 'Me'), tabs, ...sections[tab]);
 }

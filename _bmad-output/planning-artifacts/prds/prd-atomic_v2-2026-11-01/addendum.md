@@ -249,3 +249,24 @@ Where the implementation differs from or adds to §5.1 to §5.3:
 - **Theme Palette Tokens:**
   - `--ruled-line-paper: rgba(180, 150, 120, 0.22);` (warm sepia rule in Paper mode)
   - `--ruled-line-night: rgba(255, 255, 255, 0.08);` (muted slate rule in Night mode)
+
+### 6.2 As-Built Notes (2026-11-26)
+- **Rule position:** the rule is drawn 23 to 24px into each 28px line (not 27 to 28px) so the 17px serif text sits on it, the way handwriting sits on a ruled line. The gradient uses `background-origin: content-box` and `background-attachment: local`, so rules stay aligned with the text whatever the padding and while scrolling.
+- **Growth:** the textarea height is rounded up to a whole number of 28px lines on every input, so a new rule appears with each new line; minimum height 340px.
+- **Where it applies:** the main writing page, past entry cards, the edit dialog and the weekly review's reflection box.
+- **Tokens:** `--ruled-line-paper: rgba(180,150,120,.32)` (slightly stronger than the 0.22 above, which was too faint on white) and `--ruled-line-night: rgba(255,255,255,.09)`; the page itself uses `--notebook-bg`.
+
+---
+
+## 7. As-Built Notes for Other Requirements (2026-11-26)
+
+- **FR-5 Edit and archive:** edit from Today > More > Edit or the habit page. Archive sets `archivedAt` and turns its reminder off; history stays and the habit drops out of Today, patterns, reminders and the calendar export. Restore clears `archivedAt`. A stacking anchor can be a habit or a neutral Scorecard routine; loops are refused.
+- **FR-2 Energy:** a 1 to 5 energy picker sits under the mood picker after a check-in and fills `event.energy`.
+- **FR-12:** the Today `h1` reads "{n} votes this week for {identity}." when there are votes in the last 7 days.
+- **FR-15 additions:** *Streak-break precursor*: for a habit with at least 3 breaks (a missed day right after a done day), the strongest of: mood 2 or lower, energy 2 or lower, or another habit skipped, on the day before the break, if it covers at least 50% of breaks and at least 2. *Mood correlate*: at least 10 days with a recorded mood (daily average across check-ins), at least 3 days with and 3 without the habit, gap of at least 0.5; worded as a correlation. Locked patterns are listed with progress (`locked` in the engine output).
+- **FR-17:** `js/domain/weekly-review.js`. The window opens Sunday 18:00 local time and runs to the next one; it needs 3 distinct days with a check-in; completion is stored in `state.reviews` as `{ weekOf, completedAt, journalId, intention }`, and the reflection and intention are saved as a `weekly_review` journal entry.
+- **FR-24:** only active habits with an `intention.time`. `DTSTART;TZID={IANA zone}` (floating time if the zone is unknown), `DURATION:PT10M`, `RRULE:FREQ=DAILY`, `SUMMARY` is the S18 reminder text, `VALARM` with `TRIGGER:PT0M`, RFC 5545 text escaping and 75-octet line folding. No `VTIMEZONE` block is generated.
+- **FR-25:** a per-habit "Remind me" switch in Edit habit (needs an intention time). `main.js` checks every 30 seconds; a reminder fires from the intention time for 30 minutes, at most once a day (`settings.remindedOn`), and not if the habit is already done. Permission is asked when the switch is turned on.
+- **FR-26:** see the architecture note under AD-6.
+- **Fix:** journal dates were derived from UTC; they now use the local date (AD-4).
+

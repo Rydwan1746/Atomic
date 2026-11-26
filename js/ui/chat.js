@@ -45,7 +45,7 @@ export function render(el) {
 
   const providerLine = h('p', { class: 'sub', style: 'font-size:13px' },
     settings.provider === 'none'
-      ? ['AI reflection is off: replies are offline reflections. ', h('a', { href: '#/me', class: 'ghost-link' }, 'Connect a model in Me →')]
+      ? ['AI reflection is off: replies are offline reflections. ', h('a', { href: '#/me?ai', class: 'ghost-link' }, 'Connect a model in Me →')]
       : `Replies from ${PROVIDERS[settings.provider]}${settings[settings.provider]?.model ? ` · ${settings[settings.provider].model}` : ''}.`
   );
 
@@ -56,8 +56,8 @@ export function render(el) {
       modeSwitcher,
       h('div', { class: 'card', style: 'border:1px solid var(--accent-future);text-align:center;padding:32px 20px' },
         h('h3', { class: 'voice', style: 'font-size:20px' }, 'Author your Alter Ego first'),
-        h('p', { class: 'sub' }, 'Before conversing with your future self, describe who they are and three things they do, in Me > Alter Ego.'),
-        h('a', { class: 'btn primary', href: '#/me', style: 'display:inline-flex;align-items:center;align-self:center;text-decoration:none' }, 'Set up Alter Ego →')
+        h('p', { class: 'sub' }, 'Before talking with your future self, describe who they are and three things they do, in Me > You.'),
+        h('a', { class: 'btn primary', href: '#/me?you', style: 'display:inline-flex;align-items:center;align-self:center;text-decoration:none' }, 'Set up Alter Ego →')
       )
     );
     return;

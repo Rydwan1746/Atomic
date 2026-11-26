@@ -78,7 +78,7 @@ export async function ollamaChat({ system, messages, settings = {}, fetchImpl })
   return nonEmpty('Ollama', json.message?.content);
 }
 
-// Lists installed models. Used by "Test connection" in Me > AI reflection.
+// Lists installed models. Used by "Test connection" in Me > AI.
 export async function listOllamaModels(endpoint, fetchImpl) {
   const json = await request('Ollama', `${trimEndpoint(endpoint)}/api/tags`, { method: 'GET' }, PROBE_TIMEOUT_MS, fetchImpl);
   return (json.models || []).map(m => m.name).filter(Boolean);
@@ -86,7 +86,7 @@ export async function listOllamaModels(endpoint, fetchImpl) {
 
 // --- Google Gemini ---------------------------------------------------------
 export async function geminiChat({ system, messages, settings = {}, apiKey, fetchImpl }) {
-  if (!apiKey) throw new AIError('config', 'Add a Gemini API key in Me > AI reflection.', { provider: 'Gemini' });
+  if (!apiKey) throw new AIError('config', 'Add a Gemini API key in Me > AI.', { provider: 'Gemini' });
   const model = settings.model || DEFAULTS.gemini.model;
   const generationConfig = { maxOutputTokens: MAX_OUTPUT_TOKENS, temperature: 0.6 };
   // 2.5-series models spend output tokens on hidden thinking unless told not to.
@@ -107,7 +107,7 @@ export async function geminiChat({ system, messages, settings = {}, apiKey, fetc
 // --- Anthropic (bring your own key) -----------------------------------------
 // Raw fetch on purpose: the app has no build step and no npm dependencies, so the SDK cannot be bundled.
 export async function anthropicChat({ system, messages, settings = {}, apiKey, fetchImpl }) {
-  if (!apiKey) throw new AIError('config', 'Add an Anthropic API key in Me > AI reflection.', { provider: 'Anthropic' });
+  if (!apiKey) throw new AIError('config', 'Add an Anthropic API key in Me > AI.', { provider: 'Anthropic' });
   const json = await request('Anthropic', 'https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -133,7 +133,7 @@ export async function anthropicChat({ system, messages, settings = {}, apiKey, f
 
 // --- OpenAI (bring your own key) --------------------------------------------
 export async function openaiChat({ system, messages, settings = {}, apiKey, fetchImpl }) {
-  if (!apiKey) throw new AIError('config', 'Add an OpenAI API key in Me > AI reflection.', { provider: 'OpenAI' });
+  if (!apiKey) throw new AIError('config', 'Add an OpenAI API key in Me > AI.', { provider: 'OpenAI' });
   const json = await request('OpenAI', 'https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },

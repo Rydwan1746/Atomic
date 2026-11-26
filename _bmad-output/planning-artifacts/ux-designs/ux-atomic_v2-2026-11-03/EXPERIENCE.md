@@ -10,7 +10,7 @@ updated: 2026-11-08
 
 # Atomic — Experience Spine (`EXPERIENCE.md`)
 
-> Owns information architecture, interaction behavior, microcopy, states, and user journeys. Cross-references visual tokens defined in [`DESIGN.md`](file:///Users/rydwandasilva/My-Projects/atomic_v2/_bmad-output/planning-artifacts/ux-designs/ux-atomic_v2-2026-11-03/DESIGN.md).
+> Owns information architecture, interaction behavior, microcopy, states, and user journeys. Cross-references visual tokens defined in [`DESIGN.md`](/_bmad-output/planning-artifacts/ux-designs/ux-atomic_v2-2026-11-03/DESIGN.md).
 
 ---
 

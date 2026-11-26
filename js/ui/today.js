@@ -3,14 +3,16 @@ import * as H from '../domain/habits.js';
 import * as SC from '../domain/scorecard.js';
 import * as K from '../domain/streaks.js';
 import { today, addDays, toDate } from '../core/dates.js';
-import { h, catVars, moodPicker, grid } from './components.js';
+import { h, catVars, moodPicker, energyPicker, grid, announce } from './components.js';
+import { getRollingPulse } from '../domain/insights.js';
+import { backupDue } from '../domain/backup.js';
+import { downloadBackup } from './backup.js';
 import { id } from '../core/ids.js';
 import { missedYesterday } from '../domain/missed.js';
 import { promptForToday, HABIT_PROMPTS } from '../data/prompts.js';
 import './components/UnfoldingPactDialog.js';
 
 let root;
-let formOpen = false;
 let queue = [];
 let rows = [];
 let activeTab = 'votes'; // 'votes' | 'scorecard'
@@ -109,39 +111,6 @@ export function initDialog() {
   });
 }
 
-function form() {
-  const hs = H.list();
-  return h('form', { class: 'card', onsubmit: e => {
-    e.preventDefault();
-    const f = new FormData(e.target);
-    H.add({
-      name: f.get('name'),
-      identity: f.get('identity'),
-      category: f.get('category'),
-      stackedAfter: f.get('stackedAfter'),
-      time: f.get('time'),
-      place: f.get('place'),
-      two: f.get('two'),
-      bundle: f.get('bundle')
-    });
-    formOpen = false;
-    redraw();
-  } },
-    h('label', {}, 'Habit name *', h('input', { name: 'name', required: true, placeholder: 'e.g. Read 10 pages', autocomplete: 'off' })),
-    h('label', {}, 'Identity statement *', h('input', { name: 'identity', required: true, placeholder: 'e.g. A reader', autocomplete: 'off' })),
-    h('label', {}, 'Category *', h('select', { name: 'category', required: true }, H.CATEGORIES.map(c => h('option', { value: c }, c)))),
-    h('label', {}, 'Stack after (optional)', h('select', { name: 'stackedAfter' },
-      h('option', { value: '' }, 'None'), hs.map(x => h('option', { value: x.id }, x.name)))),
-    h('label', {}, 'Intention: time (optional)', h('input', { name: 'time', type: 'time' })),
-    h('label', {}, 'Intention: place (optional)', h('input', { name: 'place', placeholder: 'e.g. the sofa', autocomplete: 'off' })),
-    h('label', {}, 'Two-minute version (optional)', h('input', { name: 'two', placeholder: 'e.g. Read one page', autocomplete: 'off' })),
-    h('label', {}, 'Temptation bundle (optional)', h('input', { name: 'bundle', placeholder: 'e.g. Tea while reading', autocomplete: 'off' })),
-    h('div', { class: 'acts' },
-      h('button', { class: 'btn primary', type: 'submit' }, 'Add habit'),
-      h('button', { class: 'btn', type: 'button', onclick: () => { formOpen = false; redraw(); } }, 'Cancel'))
-  );
-}
-
 function card(hb, st) {
   const ds = K.datesFor(st.events, hb.id);
   const t = today();
@@ -175,10 +144,17 @@ function card(hb, st) {
       done ? 'Done. Tap to undo' : 'Mark done today'),
     !done && h('button', { class: 'btn-text', type: 'button', style: 'align-self:flex-start', onclick: () => askNote(hb, 'missed') }, 'Skip today'),
     done && moodPicker(ev.mood, m => { H.setMood(hb.id, m); redraw(); }),
+    done && energyPicker(ev.energy, n => { H.setEnergy(hb.id, n); redraw(); }, 'Energy (optional)'),
     h('details', { class: 'more' }, h('summary', {}, 'More'),
-      h('button', { class: 'btn', type: 'button', onclick: () => {
-        if (confirm(`Delete "${hb.name || hb.vote || 'habit'}" and its history?`)) { H.remove(hb.id); redraw(); }
-      } }, 'Delete habit'))
+      h('div', { class: 'acts', style: 'margin-top:8px' },
+        h('a', { class: 'btn', href: `#/habit/${hb.id}?edit`, style: 'display:inline-flex;align-items:center;text-decoration:none' }, 'Edit'),
+        h('button', { class: 'btn', type: 'button', onclick: () => {
+          if (!confirm(`Archive "${hb.name || hb.vote || 'habit'}"? It leaves Today but keeps its history. You can restore it any time.`)) return;
+          S.save(H.archiveHabit(S.load(), hb.id)); announce('Habit archived'); redraw();
+        } }, 'Archive'),
+        h('button', { class: 'btn', type: 'button', onclick: () => {
+          if (confirm(`Delete "${hb.name || hb.vote || 'habit'}" and all of its history? This cannot be undone. Archive keeps the history instead.`)) { H.remove(hb.id); redraw(); }
+        } }, 'Delete')))
   );
 }
 
@@ -339,23 +315,20 @@ function scorecardView(st) {
 
 function dailyVotesView(st) {
   const hs = H.list();
-  const t = today();
-  const cut = addDays(t, -6);
-  const votes = {};
+  const archived = H.listArchived();
 
-  for (const e of st.events) {
-    const hb = st.habits.find(x => x.id === e.habitId);
-    if (!hb || e.date < cut) continue;
-    const k = hb.identity.trim().toLowerCase();
-    (votes[k] ??= { n: 0, name: hb.identity.trim() }).n++;
-  }
-  const top = Object.values(votes).sort((a, b) => b.n - a.n)[0];
-
+  const due = backupDue(st);
   const items = [
-    hs.length ? h('div', { class: 'strip' }, top
-      ? [`${top.n} vote${top.n === 1 ? '' : 's'} this week for `, h('i', { class: 'voice' }, top.name)]
-      : 'No votes yet this week. Today can be the first.') : null,
-    formOpen ? form() : h('button', {
+    due ? h('div', { class: 'nudge', role: 'status' },
+      h('p', {}, due.never
+        ? `You have ${due.days} days of habits and no backup yet. Everything lives only in this browser, which can clear it.`
+        : `Your last backup was ${due.days} days ago. Everything lives only in this browser, which can clear it.`),
+      h('div', { class: 'acts' },
+        h('button', { class: 'btn', type: 'button', onclick: () => { downloadBackup(); redraw(); } }, 'Download a backup'),
+        h('button', { class: 'btn-text', type: 'button', onclick: () => {
+          const s2 = S.load(); s2.settings.backupNudgeSnoozedAt = new Date().toISOString(); S.save(s2); redraw();
+        } }, 'Remind me next week'))) : null,
+    h('button', {
       class: 'btn',
       type: 'button',
       style: 'align-self:flex-start',
@@ -379,10 +352,24 @@ function dailyVotesView(st) {
       h('div', { class: 'acts' },
         h('a', { class: 'btn primary', href: '#/journal', style: 'display:inline-flex;align-items:center;text-decoration:none' }, 'Write')
       )
-    ) : null
+    ) : null,
+    archived.length ? h('details', { class: 'more card' },
+      h('summary', {}, `Archived habits (${archived.length})`),
+      archived.map(x => h('div', { class: 'acts', style: 'justify-content:space-between;margin-top:8px' },
+        h('a', { href: `#/habit/${x.id}`, class: 'ghost-link' }, x.name || x.vote),
+        h('button', { class: 'btn', type: 'button', onclick: () => { S.save(H.restoreHabit(S.load(), x.id)); announce('Habit restored'); redraw(); } }, 'Restore')))) : null
   ].flat().filter(Boolean);
 
   return h('div', { id: 'today-tab-content', class: 'cross-fade' }, ...items);
+}
+
+// FR-12: the leading identity of the last 7 days leads the greeting.
+function greeting(st) {
+  const top = getRollingPulse(st).identities[0];
+  if (!top) return h('h1', { class: 'greet' }, 'Today is a vote for who you\u2019re becoming.');
+  return h('div', {},
+    h('h1', { class: 'greet' }, `${top.votes} ${top.votes === 1 ? 'vote' : 'votes'} this week for `, h('i', {}, top.identity), '.'),
+    h('p', { class: 'sub voice' }, 'Today is another vote for who you\u2019re becoming.'));
 }
 
 export function render(el) {
@@ -391,7 +378,7 @@ export function render(el) {
 
   el.replaceChildren(
     h('div', { class: 'date' }, new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })),
-    h('h1', { class: 'greet' }, 'Today is a vote for who you\u2019re becoming.'),
+    greeting(st),
     switcher(),
     activeTab === 'scorecard' ? scorecardView(st) : dailyVotesView(st)
   );

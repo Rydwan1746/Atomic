@@ -19,17 +19,22 @@ export function h(tag, attrs = {}, ...kids) {
 
 export const catVars = c => `--c:var(--cat-${c.toLowerCase()});--cs:var(--cat-${c.toLowerCase()}-strong)`;
 
-export function moodPicker(selected, onPick, label = 'How did it feel?') {
+// A 1 to 5 scale of round buttons (FR-9 mood, FR-2 energy). Tapping the selected value clears it.
+export function scalePicker(selected, onPick, { label, name }) {
   return h('div', { class: 'moods', role: 'group', 'aria-label': label },
     h('span', {}, label), h('span', {}, 'Low'),
     [1, 2, 3, 4, 5].map(i => h('button', {
       type: 'button',
       class: 'mood' + (selected === i ? ' sel' : ''),
-      'aria-label': `Mood ${i} of 5${selected === i ? ', selected' : ''}`,
+      'aria-pressed': String(selected === i),
+      'aria-label': `${name} ${i} of 5`,
       onclick: () => onPick(i)
     })),
     h('span', {}, 'High'));
 }
+
+export const moodPicker = (selected, onPick, label = 'How did it feel?') => scalePicker(selected, onPick, { label, name: 'Mood' });
+export const energyPicker = (selected, onPick, label = 'Energy') => scalePicker(selected, onPick, { label, name: 'Energy' });
 
 export function grid(doneDates, days, minimalDates = new Set()) {
   const s = new Set(doneDates);
