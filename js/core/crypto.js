@@ -117,3 +117,32 @@ export function isEncrypted(raw) {
   return typeof raw === 'string' && raw.startsWith('atomic:vault:v1:');
 }
 
+
+// --- At-rest encryption (FR-26 / AD-6) ------------------------------------------
+// The key is derived once (600,000 PBKDF2 iterations) when the user unlocks or sets a passphrase, then
+// reused for every save with a fresh 12-byte IV. It lives only in memory. Envelopes use the same
+// atomic:vault:v1 format, so decryptState() can still open them with the passphrase.
+
+// A new random salt and the key derived from it.
+export async function createKey(passphrase) {
+  const salt = getRandomValues(16);
+  return { key: await deriveKey(passphrase, salt), salt };
+}
+
+export async function encryptWithKey(state, key, salt) {
+  const iv = getRandomValues(12);
+  const plaintext = new TextEncoder().encode(typeof state === 'string' ? state : JSON.stringify(state));
+  const ciphertext = await getSubtle().encrypt({ name: 'AES-GCM', iv }, key, plaintext);
+  return `atomic:vault:v1:${toBase64(salt)}:${toBase64(iv)}:${toBase64(new Uint8Array(ciphertext))}`;
+}
+
+// Opens an envelope and returns the state together with the key and salt, so later saves can reuse them.
+// Throws on a wrong passphrase (AES-GCM authentication fails).
+export async function openEnvelope(envelope, passphrase) {
+  if (!isEncrypted(envelope)) throw new Error('Not a valid encrypted vault envelope.');
+  const parts = envelope.split(':');
+  const salt = fromBase64(parts[3]);
+  const key = await deriveKey(passphrase, salt);
+  const decrypted = await getSubtle().decrypt({ name: 'AES-GCM', iv: fromBase64(parts[4]) }, key, fromBase64(parts[5]));
+  return { state: JSON.parse(new TextDecoder().decode(decrypted)), key, salt };
+}

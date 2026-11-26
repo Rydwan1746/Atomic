@@ -3,9 +3,10 @@ import { h, announce } from './components.js';
 import { applyTheme } from './theme.js';
 import * as AE from '../domain/alter-ego.js';
 import * as WOOP from '../domain/woop.js';
-import { generateIcs } from '../domain/reminders.js';
+import { generateIcs, icsHabitCount } from '../domain/reminders.js';
 import { encryptState, decryptState, isEncrypted } from '../core/crypto.js';
 import { aiSettingsCard } from './ai-settings.js';
+import { protectionSection } from './protection.js';
 
 let simulatorOutput = null;
 
@@ -229,7 +230,10 @@ export function render(el) {
     ),
 
     // Calendar Export
-    h('strong', { style: 'margin-top:8px' }, 'Calendar Reminders (RFC 5545)'),
+    h('strong', { style: 'margin-top:8px' }, 'Calendar reminders'),
+    h('p', { class: 'sub' }, icsHabitCount(st)
+      ? `A daily calendar event for each of your ${icsHabitCount(st)} habits with an intention time. These remind you even when Atomic is closed. After changing a habit, download and import the file again.`
+      : 'Give a habit an intention time (Edit habit) to export it as a daily calendar reminder.'),
     h('div', { class: 'acts' },
       h('button', {
         class: 'btn',
@@ -244,9 +248,11 @@ export function render(el) {
       }, 'Download atomic-reminders.ics')
     ),
 
+    ...protectionSection(redraw),
+
     // Zero-Knowledge Passphrase Vault
-    h('strong', { style: 'margin-top:8px' }, 'Zero-Knowledge Passphrase Vault (PBKDF2 / AES-256-GCM)'),
-    h('p', { class: 'sub' }, 'Encrypts the full state using 600,000 iterations of PBKDF2. Keys strictly ephemeral.'),
+    h('strong', { style: 'margin-top:8px' }, 'Encrypted backup file'),
+    h('p', { class: 'sub' }, 'A backup file protected by its own passphrase, safe to keep in cloud storage or email to yourself.'),
     h('div', { class: 'acts' },
       h('button', {
         class: 'btn',
@@ -259,14 +265,14 @@ export function render(el) {
             const blob = new Blob([encrypted], { type: 'text/plain' });
             const a = h('a', { href: URL.createObjectURL(blob), download: `atomic-vault-encrypted-${new Date().toISOString().slice(0, 10)}.bin` });
             a.click();
-            alert('Encrypted vault exported successfully! Keep your passphrase safe; no recovery is possible without it.');
+            alert('Encrypted backup downloaded. Keep its passphrase safe: the file cannot be opened without it.');
           } catch (err) {
             alert('Encryption failed: ' + err.message);
           }
         }
-      }, 'Export Encrypted Vault Backup'),
+      }, 'Export encrypted backup'),
       h('label', { class: 'btn', style: 'display:inline-flex;align-items:center;cursor:pointer' },
-        'Restore Encrypted Vault',
+        'Restore encrypted backup',
         h('input', {
           type: 'file',
           class: 'sr',
@@ -276,14 +282,15 @@ export function render(el) {
               if (!file) return;
               const text = await file.text();
               if (!isEncrypted(text)) {
-                alert('File is not an atomic:vault:v1 encrypted container.');
+                alert('This file is not an Atomic encrypted backup.');
                 return;
               }
               const pass = prompt('Enter the passphrase for this vault:');
               if (!pass) return;
               const decryptedState = await decryptState(text, pass);
-              S.save(decryptedState);
-              alert('Vault restored successfully!');
+              S.importJSON(JSON.stringify(decryptedState));
+              await S.flush();
+              alert('Backup restored.');
               location.reload();
             } catch (err) {
               alert('Decryption failed: ' + err.message);
@@ -324,6 +331,7 @@ export function render(el) {
               const j = JSON.parse(text);
               if (confirm(`Replace current data with ${j.habits?.length ?? 0} habits, ${j.events?.length ?? 0} check-ins, ${j.journal?.length ?? 0} entries?`)) {
                 S.importJSON(text);
+                await S.flush();
                 location.reload();
               }
             } catch (err) { alert(err.message); }
