@@ -274,8 +274,8 @@ Users can activate passphrase protection in Me > Privacy and Data.
 
 ---
 
-### Implementation Status (as of 2026-11-23)
-Section 4.7 (FR-21 to FR-23) is implemented; see the "As-Built Notes" at the end of `addendum.md` §5 for where the code differs from this text. The per-requirement status of every FR (done, partial, not started) is kept in the repository `README.md` under **Status**, which is the single place updated as work lands.
+### Implementation Status (as of 2026-11-26)
+All functional requirements FR-1 to FR-26 are implemented. Where the code differs from or adds to this text, see the "As-Built Notes" in `addendum.md` (§5.4 for the AI layer, §6.2 for the notebook journal, §7 for the rest). The repository `README.md` keeps the current per-requirement status.
 
 ---
 

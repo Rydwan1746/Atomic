@@ -21,38 +21,31 @@ Requires Node 20 or newer. No packages to install.
 
 ## Status
 
-Tracked against the PRD's functional requirements (FR). "Partial" lists what is missing.
-
-### Done
+Every functional requirement in the PRD (FR-1 to FR-26) is built. The notes below say where the build differs from or adds to the PRD text; the details are in the "As-Built Notes" of `addendum.md`.
 
 - **Data layer (FR-1 to FR-4):** single storage gateway, check-in event log, misses computed on demand, migration from the v1 `atomicHabits` key with a raw backup.
-- **Habit setup (FR-6, FR-7):** identity, category, implementation intention, two-minute version, temptation bundle, stacking with cascading "Log it" prompts.
-- **Daily check-in (FR-8, FR-9):** today only, undo, 1 to 5 mood, after-check-in note saved to the Journal.
-- **Never-miss-twice (FR-10):** nudge with the two-minute version after a missed day.
-- **Metrics and grids (FR-11, FR-13):** 30-day consistency, average recovery time, 14-day strip, 12-week grid.
-- **Scorecard (FR-14), recurring journal themes (FR-16).**
-- **Alter Ego profile (FR-18), offline scenario simulator (FR-19), WOOP plans with habit-card hints (FR-20).**
-- **AI reflection (FR-21 to FR-23):** see [AI reflection](#ai-reflection) below.
-- **Calendar export (FR-24):** `atomic-reminders.ics` with daily repeating events.
-- **Backups:** JSON export and import, and an encrypted (PBKDF2 + AES-256-GCM) backup file.
+- **Habits (FR-5 to FR-7):** create, edit (Today > More > Edit, or the habit's page), archive and restore (history is kept), delete. Identity, category, intention, two-minute version, temptation bundle, stacking with cascading "Log it" prompts; stacking loops are refused.
+- **Daily check-in (FR-8, FR-9):** today only, undo, 1 to 5 mood and 1 to 5 energy, an optional note saved to the Journal.
+- **Journal (FR-9b):** a ruled notebook page (17px text on a 28px grid) that grows line by line as you write, in both themes. Past entries use the same lines.
+- **Never-miss-twice (FR-10):** nudge with the two-minute version and any linked WOOP plan after a missed day.
+- **Metrics and grids (FR-11 to FR-13):** 30-day consistency, average recovery time, 14-day strip, 12-week grid, and "X votes this week for {identity}" leading the Today greeting.
+- **Scorecard (FR-14).**
+- **Patterns (FR-15):** weekday slips, time-of-day clusters, habits done together, what comes the day before a streak breaks (a low mood, low energy or a skipped habit), and mood on days with a habit versus without. Each shows its sample and dates; locked patterns show progress.
+- **Recurring journal themes (FR-16).**
+- **Weekly review (FR-17):** opens every Sunday at 18:00, needs 3 days of check-ins, four steps, saved to the Journal, once per week.
+- **Alter Ego (FR-18), offline scenario simulator (FR-19), WOOP plans (FR-20).**
+- **AI reflection (FR-21 to FR-23):** see [AI reflection](#ai-reflection).
+- **Calendar export (FR-24):** one daily event per habit with an intention time, in your time zone, 10 minutes long, with an on-time alarm.
+- **In-tab reminders (FR-25):** per habit, at the intention time, only while Atomic is open in a tab.
+- **Passphrase protection (FR-26):** optional; encrypts everything stored on the device and asks for the passphrase when Atomic opens. There is no recovery if the passphrase is lost.
+- **Backups:** JSON export and import, and a separate encrypted backup file.
 
-### Partial
+### Known limits
 
-- **Habits (FR-5):** add and delete only. Editing and archiving are missing.
-- **Weekly identity votes (FR-12):** counted, but the Today greeting does not show "X votes this week for {identity}".
-- **Pattern engine (FR-15):** weekday slips, time-of-day clusters and co-occurring habits work. Streak-break precursors, mood correlates and progress toward locked patterns are missing.
-- **Weekly review (FR-17):** always available. The PRD limits it to Sunday 18:00 onward and to users with 3 or more days of activity.
-- **In-tab notifications (FR-25):** permission and notification code exists in `js/domain/reminders.js`, but nothing in the interface turns it on.
-- **Encryption (FR-26):** only the backup file can be encrypted. Saved data in the browser is not encrypted, and there is no passphrase prompt at startup.
-
-### Not started
-
-- **Lined notebook journal (FR-9b):** ruled lines, taller page, auto-growing writing area on a 28px grid.
-- **Energy picker:** events have an `energy` field that is always empty.
-
-### Known issues
-
-- Journal entry dates are taken from UTC (`toISOString()`), so an entry written late in the evening can land on the next day. The architecture requires local dates.
+- Data lives in one browser on one device. Clearing site data, or Safari removing it after a long period without visits, deletes it: export backups.
+- In-tab reminders need the tab open. Use the calendar export for reminders when Atomic is closed.
+- The calendar file names your time zone (for example `Europe/Paris`) without a `VTIMEZONE` block. Google, Apple and Outlook calendars accept this; a strict calendar app may not.
+- With passphrase protection on, each save is written a few milliseconds later than without it. Closing the tab in that instant can lose the very last change.
 
 ## AI reflection
 
@@ -104,12 +97,12 @@ The privacy chip above the chat shows exactly what the next message will send. *
     style.css             design tokens (Paper and Night themes), layout, components
     js/main.js            bootstrap, hash router (#/today, #/journal, #/insights, #/chat, #/me)
     js/core/              storage.js (only file that touches localStorage), dates.js, ids.js, crypto.js
-    js/domain/            pure logic: habits, streaks, missed days, journal, insights, scorecard,
-                          alter-ego, woop, reminders
+    js/domain/            pure logic: habits, streaks, missed days, journal, insights, weekly-review,
+                          scorecard, alter-ego, woop, reminders
     js/ai/                index.js (pipeline), firewall.js (payloads), prompts.js, guardrails.js,
                           adapters.js (Ollama, Gemini, Anthropic, OpenAI transports)
     js/data/              prompts.js (journal prompt bank)
-    js/ui/                one file per screen, plus components.js, theme.js and ai-settings.js
+    js/ui/                one file per screen, plus components.js, theme.js, ai-settings.js and protection.js
     tests/                node:test suites for core, domain and ai
 
 Rules: `core/`, `domain/` and `ai/` contain no DOM code. Only `storage.js` reads or writes `localStorage`. Only `js/ai/adapters.js` makes network requests.
@@ -117,9 +110,14 @@ Rules: `core/`, `domain/` and `ai/` contain no DOM code. Only `storage.js` reads
 ## Your data
 
 - Stored in this browser under the key `atomic.v2` (`schemaVersion: 2`). Old `atomicHabits` data is migrated on first load and a raw copy is kept under `atomicHabits_v1_backup`.
-- It is not encrypted in the browser yet. Anyone with access to the browser profile can read it.
+- Unencrypted by default. Turn on **Me > Passphrase protection** to encrypt it (AES-256-GCM, key derived with PBKDF2, 600,000 iterations). The key is kept only in memory and the passphrase cannot be recovered.
+- Data belongs to the address Atomic is opened from: `localhost:8000` and a deployed copy have separate data. Move it with Export and Import JSON backup.
 - Use Me > Export JSON backup regularly. Clearing browser data deletes your habits and journal.
 - If stored data cannot be read (for example a newer schema version), saving is paused so nothing is overwritten.
+
+## Deploying
+
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ## Themes
 

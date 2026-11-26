@@ -232,7 +232,7 @@ export function render(el) {
     // Calendar Export
     h('strong', { style: 'margin-top:8px' }, 'Calendar reminders'),
     h('p', { class: 'sub' }, icsHabitCount(st)
-      ? `A daily calendar event for each of your ${icsHabitCount(st)} habits with an intention time. These remind you even when Atomic is closed. After changing a habit, download and import the file again.`
+      ? `A daily calendar event for ${icsHabitCount(st) === 1 ? 'your 1 habit' : `each of your ${icsHabitCount(st)} habits`} with an intention time. These remind you even when Atomic is closed. After changing a habit, download and import the file again.`
       : 'Give a habit an intention time (Edit habit) to export it as a daily calendar reminder.'),
     h('div', { class: 'acts' },
       h('button', {

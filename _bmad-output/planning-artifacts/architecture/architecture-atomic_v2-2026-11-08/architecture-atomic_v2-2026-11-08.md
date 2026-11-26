@@ -154,6 +154,8 @@ graph TD
   - The derived symmetric `CryptoKey` resides strictly in transient JavaScript memory. It is NEVER written to `localStorage`, `sessionStorage`, `IndexedDB`, cookies, or browser caches.
   - On application startup, if encrypted ciphertext is detected, `storage.js` pauses state loading and triggers a modal passphrase prompt.
 
+  - **As built (2026-11-26):** the key is derived once (on unlock, or when protection is turned on or the passphrase changed) and reused for every save with a fresh 12-byte IV, because 600,000 PBKDF2 iterations per save would freeze the interface. The salt is stored in each envelope (`atomic:vault:v1:{salt}:{iv}:{ciphertext}`), so the same format opens with the passphrase alone. Encrypted writes are queued and collapsed to the latest state. While locked, `storage.js` refuses every save and import, and `main.js` shows the unlock screen before any screen renders. The flag is `settings.encryptionEnabled`.
+
 ### AD-7 — Deterministic Pure Statistical Pattern Engine with Proof Payloads [ADOPTED]
 
 - **Binds:** `FR-15`, `FR-16`, `FR-17`, `js/domain/insights.js`.
