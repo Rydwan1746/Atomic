@@ -36,10 +36,10 @@ Connect the GitHub repository in their dashboard, or drag the folder onto Netlif
 
 Data belongs to the address the app is opened from, so `http://localhost:8000` and your deployed site each have their own data.
 
-1. On the old address: **Me > Export JSON backup**.
-2. On the new address: **Me > Import JSON backup**, and choose the file.
+1. On the old address: **Me > Data & privacy > Download backup**.
+2. On the new address: **Me > Data & privacy > Restore from backup**, and choose the file.
 
-If passphrase protection is on, the JSON backup is not encrypted: store it somewhere safe or use **Export encrypted backup** instead, then **Restore encrypted backup** on the new address.
+If passphrase protection is on, the JSON backup is not encrypted: store it somewhere safe or use **Export encrypted backup** (Me > Data & privacy) instead, then **Restore encrypted backup** on the new address.
 
 ## Using local Ollama with the deployed site
 
@@ -66,7 +66,7 @@ Ollama runs on your own computer at `http://localhost:11434`. A hosted site can 
 - Chrome, Edge and Firefox allow it. Recent versions of Chrome may show a prompt asking whether the site may access devices on your local network: choose **Allow**.
 - Safari is stricter about secure pages calling `http://localhost`, and may block it. If Test connection fails in Safari but works in Chrome, this is why; use Chrome or Firefox for local AI, or run Atomic from `http://localhost:8000` on that computer.
 
-Then open **Me > AI reflection**, choose **Local Ollama**, and press **Test connection**.
+Then open **Me > AI**, choose **Local Ollama**, and press **Test connection**.
 
 Local Ollama only works on the computer where Ollama runs. On a phone, Chat falls back to offline reflections unless you choose a cloud provider.
 

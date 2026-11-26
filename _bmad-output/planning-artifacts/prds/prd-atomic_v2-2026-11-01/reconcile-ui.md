@@ -1,7 +1,7 @@
 # Input Reconciliation: UI & Behavioral Guidelines
 
-**Source:** [`docs/atomic-ui-guidelines.md`](file:///Users/rydwandasilva/My-Projects/atomic_v2/docs/atomic-ui-guidelines.md)  
-**Target:** [`prd.md`](file:///Users/rydwandasilva/My-Projects/atomic_v2/_bmad-output/planning-artifacts/prds/prd-atomic_v2-2026-11-01/prd.md)
+**Source:** [`docs/atomic-ui-guidelines.md`](/docs/atomic-ui-guidelines.md)  
+**Target:** [`prd.md`](/_bmad-output/planning-artifacts/prds/prd-atomic_v2-2026-11-01/prd.md)
 
 ### Coverage Matrix
 - **Design Philosophy (§1):** Captured in `prd.md` §1 (Vision) and §8.1 (Aesthetic & Tone).

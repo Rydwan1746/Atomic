@@ -56,7 +56,7 @@ Chat has two modes with separate jobs:
 
 ### Providers
 
-Pick one in **Me > AI reflection**. The default is **Off**.
+Pick one in **Me > AI**. The default is **Off**.
 
 | Provider | Where requests go | Key |
 |---|---|---|
@@ -72,7 +72,7 @@ API keys are kept in memory for the open tab unless you tick "Remember keys on t
 
 1. Install Ollama from https://ollama.com and start it (the desktop app starts it automatically, or run `ollama serve`).
 2. Download a model: `ollama pull llama3.2`. Any chat model works; type its name in the Model field.
-3. In Atomic, open **Me > AI reflection**, choose **Local Ollama**, and press **Test connection**. It lists the installed models.
+3. In Atomic, open **Me > AI**, choose **Local Ollama**, and press **Test connection**. It lists the installed models.
 4. If Atomic is opened from anything other than `localhost` or `127.0.0.1` (for example a hosted copy), Ollama blocks the browser request. Start Ollama with that address allowed, for example `OLLAMA_ORIGINS="https://your-host.example" ollama serve`.
 
 ### Tone, hand-offs and guardrails
@@ -89,7 +89,7 @@ Every message goes through `js/ai/index.js`, in this order:
 
 Small local models follow these instructions less reliably than large ones. `llama3.2` (3B) works; a 7B or 8B model such as `qwen2.5:7b` or `llama3.1:8b` gives noticeably more natural replies if your computer can run it.
 
-The privacy chip above the chat shows exactly what the next message will send. **Me > AI reflection > What was sent** keeps a local log of the last 30 requests and their payloads.
+The privacy chip above the chat shows exactly what the next message will send. **Me > AI > What was sent** keeps a local log of the last 30 requests and their payloads.
 
 ## Project structure
 
@@ -110,9 +110,9 @@ Rules: `core/`, `domain/` and `ai/` contain no DOM code. Only `storage.js` reads
 ## Your data
 
 - Stored in this browser under the key `atomic.v2` (`schemaVersion: 2`). Old `atomicHabits` data is migrated on first load and a raw copy is kept under `atomicHabits_v1_backup`.
-- Unencrypted by default. Turn on **Me > Passphrase protection** to encrypt it (AES-256-GCM, key derived with PBKDF2, 600,000 iterations). The key is kept only in memory and the passphrase cannot be recovered.
-- Data belongs to the address Atomic is opened from: `localhost:8000` and a deployed copy have separate data. Move it with Export and Import JSON backup.
-- Use Me > Export JSON backup regularly. Clearing browser data deletes your habits and journal.
+- Unencrypted by default. Turn on **Me > Data & privacy > Passphrase protection** to encrypt it (AES-256-GCM, key derived with PBKDF2, 600,000 iterations). The key is kept only in memory and the passphrase cannot be recovered.
+- Data belongs to the address Atomic is opened from: `localhost:8000` and a deployed copy have separate data. Move it with Download backup and Restore from backup (Me > Data & privacy).
+- Use Me > Data & privacy > Download backup regularly. Clearing browser data deletes your habits and journal.
 - If stored data cannot be read (for example a newer schema version), saving is paused so nothing is overwritten.
 
 ## Deploying

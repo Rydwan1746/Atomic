@@ -10,6 +10,7 @@ import * as detail from './ui/habit-detail.js';
 import * as missed from './ui/missed.js';
 import { dueReminders, notifyHabit } from './domain/reminders.js';
 import { today as todayDate } from './core/dates.js';
+import { requestPersistence } from './ui/backup.js';
 
 const placeholder = (title, text) => el => el.replaceChildren(h('h2', {}, title), h('div', { class: 'empty' }, text));
 const ROUTES = {
@@ -23,7 +24,8 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme
 
 function route() {
   const key = (location.hash.replace('#/', '') || 'today');
-  const name = ROUTES[key] ? key : 'today';
+  const base = key.split('?')[0];
+  const name = ROUTES[base] ? base : 'today';
   document.getElementById('nav').replaceChildren(...Object.entries(ROUTES).map(([k, [label]]) =>
     h('a', { href: `#/${k}`, 'aria-current': k === name ? 'page' : null }, label)));
   const view = document.getElementById('view');
@@ -46,6 +48,9 @@ function boot() {
   addEventListener('hashchange', route); route(); missed.maybeAsk();
   setInterval(checkReminders, 30000);
   checkReminders();
+  // Ask the browser to keep Atomic's data once there is something worth keeping.
+  const st = S.load();
+  if (st.habits.length || st.journal.length) requestPersistence();
 }
 
 // FR-26: protected data stays locked until the passphrase is entered. Nothing else renders or saves before that.

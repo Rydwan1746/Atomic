@@ -164,7 +164,7 @@ export async function ask(state, { message, mode = 'mirror', includeJournal = fa
 
 // Human-readable notice for a failed or disabled provider.
 export function noticeText(result, state) {
-  if (result.notice === 'off') return 'AI reflection is off, so this is an offline reflection. You can connect local Ollama or an API key in Me > AI reflection.';
+  if (result.notice === 'off') return 'AI reflection is off, so this is an offline reflection. You can connect local Ollama or an API key in Me > AI.';
   if (result.notice !== 'unavailable') return '';
   if (result.provider === 'ollama') {
     const endpoint = aiSettings(state).ollama.endpoint;
@@ -173,7 +173,7 @@ export function noticeText(result, state) {
   return `${PROVIDERS[result.provider] || 'The AI provider'} did not answer. Showing an offline reflection instead. ${result.error || ''}`.trim();
 }
 
-// Local audit log entry. Stored on this device only, viewable in Me > AI reflection.
+// Local audit log entry. Stored on this device only, viewable in Me > AI.
 export function auditEntry(result) {
   if (!result.sent) return null;
   return {

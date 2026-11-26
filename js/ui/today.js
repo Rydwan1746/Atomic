@@ -5,13 +5,14 @@ import * as K from '../domain/streaks.js';
 import { today, addDays, toDate } from '../core/dates.js';
 import { h, catVars, moodPicker, energyPicker, grid, announce } from './components.js';
 import { getRollingPulse } from '../domain/insights.js';
+import { backupDue } from '../domain/backup.js';
+import { downloadBackup } from './backup.js';
 import { id } from '../core/ids.js';
 import { missedYesterday } from '../domain/missed.js';
 import { promptForToday, HABIT_PROMPTS } from '../data/prompts.js';
 import './components/UnfoldingPactDialog.js';
 
 let root;
-let formOpen = false;
 let queue = [];
 let rows = [];
 let activeTab = 'votes'; // 'votes' | 'scorecard'
@@ -108,39 +109,6 @@ export function initDialog() {
     queue = [];
     if (next.length) offer(next);
   });
-}
-
-function form() {
-  const hs = H.list();
-  return h('form', { class: 'card', onsubmit: e => {
-    e.preventDefault();
-    const f = new FormData(e.target);
-    H.add({
-      name: f.get('name'),
-      identity: f.get('identity'),
-      category: f.get('category'),
-      stackedAfter: f.get('stackedAfter'),
-      time: f.get('time'),
-      place: f.get('place'),
-      two: f.get('two'),
-      bundle: f.get('bundle')
-    });
-    formOpen = false;
-    redraw();
-  } },
-    h('label', {}, 'Habit name *', h('input', { name: 'name', required: true, placeholder: 'e.g. Read 10 pages', autocomplete: 'off' })),
-    h('label', {}, 'Identity statement *', h('input', { name: 'identity', required: true, placeholder: 'e.g. A reader', autocomplete: 'off' })),
-    h('label', {}, 'Category *', h('select', { name: 'category', required: true }, H.CATEGORIES.map(c => h('option', { value: c }, c)))),
-    h('label', {}, 'Stack after (optional)', h('select', { name: 'stackedAfter' },
-      h('option', { value: '' }, 'None'), hs.map(x => h('option', { value: x.id }, x.name)))),
-    h('label', {}, 'Intention: time (optional)', h('input', { name: 'time', type: 'time' })),
-    h('label', {}, 'Intention: place (optional)', h('input', { name: 'place', placeholder: 'e.g. the sofa', autocomplete: 'off' })),
-    h('label', {}, 'Two-minute version (optional)', h('input', { name: 'two', placeholder: 'e.g. Read one page', autocomplete: 'off' })),
-    h('label', {}, 'Temptation bundle (optional)', h('input', { name: 'bundle', placeholder: 'e.g. Tea while reading', autocomplete: 'off' })),
-    h('div', { class: 'acts' },
-      h('button', { class: 'btn primary', type: 'submit' }, 'Add habit'),
-      h('button', { class: 'btn', type: 'button', onclick: () => { formOpen = false; redraw(); } }, 'Cancel'))
-  );
 }
 
 function card(hb, st) {
@@ -349,8 +317,18 @@ function dailyVotesView(st) {
   const hs = H.list();
   const archived = H.listArchived();
 
+  const due = backupDue(st);
   const items = [
-    formOpen ? form() : h('button', {
+    due ? h('div', { class: 'nudge', role: 'status' },
+      h('p', {}, due.never
+        ? `You have ${due.days} days of habits and no backup yet. Everything lives only in this browser, which can clear it.`
+        : `Your last backup was ${due.days} days ago. Everything lives only in this browser, which can clear it.`),
+      h('div', { class: 'acts' },
+        h('button', { class: 'btn', type: 'button', onclick: () => { downloadBackup(); redraw(); } }, 'Download a backup'),
+        h('button', { class: 'btn-text', type: 'button', onclick: () => {
+          const s2 = S.load(); s2.settings.backupNudgeSnoozedAt = new Date().toISOString(); S.save(s2); redraw();
+        } }, 'Remind me next week'))) : null,
+    h('button', {
       class: 'btn',
       type: 'button',
       style: 'align-self:flex-start',

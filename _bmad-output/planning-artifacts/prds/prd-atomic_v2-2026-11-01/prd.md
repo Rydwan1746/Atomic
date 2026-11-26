@@ -8,9 +8,9 @@ updated: 2026-11-20
 # PRD: Atomic v2 — Identity-Based Habit Tracker
 
 ## 0. Document Purpose
-This Product Requirements Document (PRD) defines the functional capabilities, behavioral expectations, user journeys, and core guardrails for **Atomic v2**, an identity-based habit tracker grounded in James Clear’s *Atomic Habits*. It serves as the baseline for system architecture ([`bmad-architecture`](file:///Users/rydwandasilva/My-Projects/atomic_v2/.agent/skills/bmad-architecture/SKILL.md)), UX and visual design refinement ([`bmad-ux`](file:///Users/rydwandasilva/My-Projects/atomic_v2/.agent/skills/bmad-ux/SKILL.md)), and test-driven implementation ([`bmad-build`](file:///Users/rydwandasilva/My-Projects/atomic_v2/.agent/skills/bmad-build/SKILL.md)). 
+This Product Requirements Document (PRD) defines the functional capabilities, behavioral expectations, user journeys, and core guardrails for **Atomic v2**, an identity-based habit tracker grounded in James Clear’s *Atomic Habits*. It serves as the baseline for system architecture (`.agent/skills/bmad-architecture/SKILL.md`), UX and visual design refinement (`.agent/skills/bmad-ux/SKILL.md`), and test-driven implementation (`.agent/skills/bmad-build/SKILL.md`). 
 
-Technical specifications, state JSON schemas, algorithmic thresholds, and cryptographic parameters are preserved in [`addendum.md`](file:///Users/rydwandasilva/My-Projects/atomic_v2/_bmad-output/planning-artifacts/prds/prd-atomic_v2-2026-11-01/addendum.md). Audit logs and decisions are maintained in [`.memlog.md`](file:///Users/rydwandasilva/My-Projects/atomic_v2/_bmad-output/planning-artifacts/prds/prd-atomic_v2-2026-11-01/.memlog.md).
+Technical specifications, state JSON schemas, algorithmic thresholds, and cryptographic parameters are preserved in [`addendum.md`](/_bmad-output/planning-artifacts/prds/prd-atomic_v2-2026-11-01/addendum.md). Audit logs and decisions are maintained in [`.memlog.md`](/_bmad-output/planning-artifacts/prds/prd-atomic_v2-2026-11-01/.memlog.md).
 
 ---
 
@@ -107,7 +107,7 @@ Through its local-first architecture and dual-mode AI reflection, Atomic gives t
 **Description:** A pure, decoupled data layer managing an append-only event log, local storage persistence, cryptographic protection, and migration from legacy v1 structures. Realizes UJ-1, UJ-2, UJ-4.
 
 #### FR-1: Single Storage Gateway
-The system MUST funnel all persistent read and write operations exclusively through a unified storage module ([`storage.js`](file:///Users/rydwandasilva/My-Projects/atomic_v2/js/core/storage.js)).
+The system MUST funnel all persistent read and write operations exclusively through a unified storage module ([`storage.js`](/js/core/storage.js)).
 - **Consequences:** No UI component or domain logic module accesses `localStorage` directly.
 - **Out of Scope:** Direct remote database networking in v1.
 
@@ -193,7 +193,7 @@ Users can log daily behaviors and assign awareness ratings: Positive (`+`), Nega
 - **Consequences:** Scorecard maintains sequential order and summarizes counts: *"{n} positive, {n} negative, {n} neutral"*.
 
 #### FR-15: Pure Pattern Engine
-The system MUST run deterministic pattern-matching functions ([`insights.js`](file:///Users/rydwandasilva/My-Projects/atomic_v2/js/domain/streaks.js)) without invoking external AI or network calls.
+The system MUST run deterministic pattern-matching functions ([`insights.js`](/js/domain/streaks.js)) without invoking external AI or network calls.
 - **Consequences:** Evaluates weekday variance ($\ge 25\%$ gap), time-of-day clustering ($\ge 60\%$), streak-break precursors ($\ge 50\%$), habit co-occurrences ($\ge 25\%$), and mood correlates. Every pattern card includes explicit sample size and a collapsible *"Why am I seeing this?"* proof disclosure. Locked patterns show progress towards unlock criteria.
 
 #### FR-16: Recurring-Theme NLP Detector

@@ -32,15 +32,6 @@ export function createHabit(state, payload = {}) {
   return { ...state, habits: newHabits };
 }
 
-export function add(f) {
-  const st = S.load();
-  st.habits.push({ id: id('h'), name: f.name.trim(), identity: f.identity.trim(), category: f.category,
-    stackedAfter: f.stackedAfter || null,
-    intention: (f.time || f.place) ? { time: f.time || '', place: (f.place || '').trim() } : null,
-    twoMinuteVersion: (f.two || '').trim() || null, temptationBundle: (f.bundle || '').trim() || null,
-    reminderOn: false, createdAt: new Date().toISOString(), archivedAt: null });
-  S.save(st);
-}
 export function remove(hid) {
   const st = S.load();
   st.habits = st.habits.filter(h => h.id !== hid);

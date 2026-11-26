@@ -1,7 +1,7 @@
 # Input Reconciliation: Functionality Guidelines
 
-**Source:** [`docs/atomic-functionality-guidelines.md`](file:///Users/rydwandasilva/My-Projects/atomic_v2/docs/atomic-functionality-guidelines.md)  
-**Target:** [`prd.md`](file:///Users/rydwandasilva/My-Projects/atomic_v2/_bmad-output/planning-artifacts/prds/prd-atomic_v2-2026-11-01/prd.md) & [`addendum.md`](file:///Users/rydwandasilva/My-Projects/atomic_v2/_bmad-output/planning-artifacts/prds/prd-atomic_v2-2026-11-01/addendum.md)
+**Source:** [`docs/atomic-functionality-guidelines.md`](/docs/atomic-functionality-guidelines.md)  
+**Target:** [`prd.md`](/_bmad-output/planning-artifacts/prds/prd-atomic_v2-2026-11-01/prd.md) & [`addendum.md`](/_bmad-output/planning-artifacts/prds/prd-atomic_v2-2026-11-01/addendum.md)
 
 ### Coverage Matrix
 - **Core Philosophy (§1):** Captured in `prd.md` §1 (Vision) and §5 (Non-Goals).

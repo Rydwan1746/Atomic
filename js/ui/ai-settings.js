@@ -1,4 +1,4 @@
-// Me > AI reflection: provider choice, Ollama connection test, API keys, and the local log of what was sent.
+// Me > AI: provider choice, Ollama connection test, API keys, and the local log of what was sent.
 import * as S from '../core/storage.js';
 import { h, announce } from './components.js';
 import { aiSettings, setApiKey, getApiKey, needsKey, PROVIDERS, DEFAULTS } from '../ai/index.js';
