@@ -17,7 +17,7 @@ Open http://localhost:8000. If the page is blank, check the browser console and 
 
     node tests/run.js
 
-Requires Node 20 or newer. No packages to install.
+Requires Node 20 or newer. No packages to install. GitHub runs the same tests on every pull request and push to `main` (`.github/workflows/tests.yml`).
 
 ## Status
 
@@ -38,7 +38,10 @@ Every functional requirement in the PRD (FR-1 to FR-26) is built. The notes belo
 - **Calendar export (FR-24):** one daily event per habit with an intention time, in your time zone, 10 minutes long, with an on-time alarm.
 - **In-tab reminders (FR-25):** per habit, at the intention time, only while Atomic is open in a tab.
 - **Passphrase protection (FR-26):** optional; encrypts everything stored on the device and asks for the passphrase when Atomic opens. There is no recovery if the passphrase is lost.
-- **Backups:** JSON export and import, and a separate encrypted backup file.
+- **Backups:** JSON download and restore, a separate encrypted backup file, a reminder on Today when the last backup is 14+ days old, and a request to the browser to keep Atomic's data.
+- **Security policy:** `index.html` allows scripts only from the site itself, and network requests only to local Ollama (`localhost`, `127.0.0.1`) and the Gemini, Anthropic and OpenAI APIs.
+
+Planned for later: see [`docs/LATER.md`](docs/LATER.md).
 
 ### Known limits
 

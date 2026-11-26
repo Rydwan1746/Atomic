@@ -68,6 +68,8 @@ Ollama runs on your own computer at `http://localhost:11434`. A hosted site can 
 
 Then open **Me > AI**, choose **Local Ollama**, and press **Test connection**.
 
+The security policy in `index.html` only lets the app reach Ollama at `localhost` or `127.0.0.1`. If you run Ollama on another machine (for example `http://192.168.1.20:11434`), add that address to `connect-src` in `index.html`.
+
 Local Ollama only works on the computer where Ollama runs. On a phone, Chat falls back to offline reflections unless you choose a cloud provider.
 
 ## Running it locally instead
